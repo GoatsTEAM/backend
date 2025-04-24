@@ -1,26 +1,5 @@
 import pytest
 
-from faker import Faker
-
-from app.models.Reviewable import Reviewable
-
-fake = Faker()
-
-
-@pytest.fixture
-def empty_reviewable() -> Reviewable:
-    return Reviewable(fake.random_int(min=1, max=10000), 0, 0)
-
-
-@pytest.fixture
-def rating() -> int:
-    return fake.random_int(min=1, max=5)
-
-
-@pytest.fixture
-def ratings() -> list[int]:
-    return [fake.random_int(min=1, max=5) for _ in range(100)]
-
 
 def test_add_first_review(empty_reviewable, rating):
     empty_reviewable.add_review(rating)
