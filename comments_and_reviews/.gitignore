@@ -6,3 +6,6 @@
 **/__pycache__/
 .python-version
 .pytest-cache
+
+coverage.xml
+.coverage
