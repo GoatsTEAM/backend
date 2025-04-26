@@ -1,59 +1,37 @@
 import pytest
 from faker import Faker
-from app.models.User import User, Moderator, Admin, Operator, Seller, Buyer
+from app.models.User import Moderator, Seller, Buyer
 
 fake = Faker()
 
 
-def make(user_cls: type[User], *, banned: bool = False) -> User:
-    return user_cls(
-        fake.random_int(min=1, max=10000),
-        fake.name(),
-        banned,
+@pytest.fixture
+def moderator(id) -> Moderator:
+    return Moderator(id=id, name=fake.name())
+
+
+@pytest.fixture
+def buyer(id) -> Buyer:
+    return Buyer(
+        id=id,
+        name=fake.name(),
+        banned=False,
         avatar=fake.image_url(),
     )
 
 
 @pytest.fixture
-def user() -> User:
-    return make(User)
-
-
-@pytest.fixture
-def banned_user() -> User:
-    return make(User, banned=True)
-
-
-@pytest.fixture
-def admin() -> Admin:
-    admin = make(Admin)
-    assert isinstance(admin, Admin)
-    return admin
-
-
-@pytest.fixture
-def operator() -> Operator:
-    op = make(Operator)
-    assert isinstance(op, Operator)
-    return op
-
-
-@pytest.fixture
-def moderator() -> Moderator:
-    moderator = make(Moderator)
-    assert isinstance(moderator, Moderator)
-    return moderator
-
-
-@pytest.fixture
-def buyer() -> Buyer:
-    buyer = make(Buyer)
-    assert isinstance(buyer, Buyer)
+def banned_buyer(buyer) -> Buyer:
+    buyer.ban()
     return buyer
 
 
 @pytest.fixture
-def seller() -> Seller:
-    seller = make(Seller)
-    assert isinstance(seller, Seller)
+def seller(id) -> Seller:
+    return Seller(id=id, name=fake.name(), banned=False)
+
+
+@pytest.fixture
+def banned_seller(seller) -> Seller:
+    seller.ban()
     return seller
