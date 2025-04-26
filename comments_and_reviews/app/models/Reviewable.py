@@ -1,12 +1,20 @@
-class Reviewable:
-    id: int
-    average_rating: float
-    reviews_count: int
+from bson.objectid import ObjectId
 
-    def __init__(self, id: int, average_rating: int, reviews_count: int):
+from app.models.Base import BaseModel
+
+
+class Reviewable(BaseModel):
+    def __init__(self, id: ObjectId, average_rating: int, reviews_count: int):
         self.id = id
         self.average_rating = average_rating
         self.reviews_count = reviews_count
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "average_rating": self.average_rating,
+            "reviews_count": self.reviews_count,
+        }
 
     def add_review(self, rating: int):
         self.average_rating = (
@@ -31,9 +39,6 @@ class Reviewable:
                 self.average_rating * self.reviews_count - rating
             ) / (self.reviews_count - 1)
             self.reviews_count -= 1
-
-    def get_rating_info(self) -> tuple[int, float]:
-        return self.reviews_count, self.average_rating
 
 
 class Product(Reviewable):

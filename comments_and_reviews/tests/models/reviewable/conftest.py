@@ -8,8 +8,8 @@ fake = Faker()
 
 
 @pytest.fixture
-def empty_reviewable() -> Reviewable:
-    return Reviewable(fake.random_int(min=1, max=10000), 0, 0)
+def empty_reviewable(id) -> Reviewable:
+    return Reviewable(id, 0, 0)
 
 
 @pytest.fixture
