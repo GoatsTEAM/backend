@@ -6,13 +6,15 @@ from app.models.Review import (
     ReviewContent,
     ReviewMetadata,
     Review,
-    Status,
+    ReviewStatus,
     ReviewForAuthor,
     ReviewForBuyers,
     ReviewForModerator,
     ReviewForSeller,
 )
+from app.models.User import Buyer
 from tests.models.user.conftest import buyer
+
 
 fake = Faker()
 
@@ -49,12 +51,28 @@ def review(id, buyer, content, answer, metadata):
     return Review(
         id=id,
         author=buyer,
-        status=Status.PUBLISHED,
+        status=ReviewStatus.PUBLISHED,
         content=content,
         answer=answer,
         likes=0,
         metadata=metadata,
     )
+
+
+@pytest.fixture
+def review_with_author(
+    id, buyer, content, answer, metadata
+) -> tuple[Review, Buyer]:
+    review = Review(
+        id=id,
+        author=buyer,
+        status=ReviewStatus.PUBLISHED,
+        content=content,
+        answer=answer,
+        likes=0,
+        metadata=metadata,
+    )
+    return review, buyer
 
 
 @pytest.fixture

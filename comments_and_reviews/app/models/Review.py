@@ -10,7 +10,7 @@ from app.models.Base import BaseModel
 from app.models.User import Buyer
 
 
-class Status(str, Enum):
+class ReviewStatus(str, Enum):
     PUBLISHED = "published"
     PENDING = "pending"
     HIDDEN = "hidden"
@@ -49,6 +49,9 @@ class ReviewForBuyers(ABC):
 
 class ReviewForModerator(ABC):
     @abstractmethod
+    def get_author(self) -> Buyer: ...
+
+    @abstractmethod
     def publish(self): ...
 
     @abstractmethod
@@ -74,7 +77,7 @@ class Review(
         self,
         id: ObjectId,
         author: Buyer,
-        status: Status,
+        status: ReviewStatus,
         content: ReviewContent,
         answer: str | None,
         likes: int,
@@ -112,13 +115,16 @@ class Review(
             self.likes -= 1
 
     def publish(self):
-        self.status = Status.PUBLISHED
+        self.status = ReviewStatus.PUBLISHED
 
     def hide(self):
-        self.status = Status.HIDDEN
+        self.status = ReviewStatus.HIDDEN
 
     def to_moderation(self):
-        self.status = Status.PENDING
+        self.status = ReviewStatus.PENDING
 
     def add_answer(self, answer: str):
         self.answer = answer
+
+    def get_author(self) -> Buyer:
+        return self.author
