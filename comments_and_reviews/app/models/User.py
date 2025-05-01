@@ -5,23 +5,12 @@ from bson.objectid import ObjectId
 from app.models.Base import BaseModel
 
 
-class User(BaseModel):
+class User(BaseModel, ABC):
     @abstractmethod
     def is_moderator(self) -> bool: ...
 
 
-class Bannable(ABC):
-    @abstractmethod
-    def is_banned(self) -> bool: ...
-
-    @abstractmethod
-    def ban(self): ...
-
-    @abstractmethod
-    def unban(self): ...
-
-
-class Buyer(User, Bannable):
+class Buyer(User):
     def __init__(self, id: ObjectId, name: str, banned: bool, avatar: str):
         self.id = id
         self.name = name
@@ -49,7 +38,7 @@ class Buyer(User, Bannable):
         self.banned = False
 
 
-class Seller(User, Bannable):
+class Seller(User):
     def __init__(self, id: ObjectId, name: str, banned: bool):
         self.id = id
         self.name = name
@@ -65,15 +54,6 @@ class Seller(User, Bannable):
             "banned": self.banned,
         }
 
-    def is_banned(self) -> bool:
-        return self.banned
-
-    def ban(self):
-        self.banned = True
-
-    def unban(self):
-        self.banned = False
-
 
 class Moderator(User):
     def __init__(self, id: ObjectId, name: str):
@@ -86,8 +66,8 @@ class Moderator(User):
     def to_dict(self) -> dict[str, Any]:
         return {"id": self.id, "name": self.name}
 
-    def ban_user(self, user: Bannable):
+    def ban_user(self, user: Buyer):
         user.ban()
 
-    def unban_user(self, user: Bannable):
+    def unban_user(self, user: Buyer):
         user.unban()
