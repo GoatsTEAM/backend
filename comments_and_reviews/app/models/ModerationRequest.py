@@ -39,12 +39,12 @@ class ModerationRequest(BaseModel):
         return {
             "id": self.id,
             "review": self.review,
-            "complainant": self.complainant,
-            "complainee": self.complainee,
+            "complainant": self.complainant.to_dict(),
+            "complainee": self.complainee.to_dict(),
             "description": self.description,
             "created_at": self.created_at,
             "closed_at": self.closed_at,
-            "moderator": self.moderator,
+            "moderator": self.moderator.to_dict(),
             "status": self.status,
         }
 

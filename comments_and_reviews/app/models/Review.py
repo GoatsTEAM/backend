@@ -34,12 +34,12 @@ class ReviewMetadata:
         self.edited_at = datetime.now()
 
 
-class ReviewForAuthor(ABC):
+class ReviewForAuthor(BaseModel, ABC):
     @abstractmethod
     def update(self, content: ReviewContent): ...
 
 
-class ReviewForBuyers(ABC):
+class ReviewForBuyers(BaseModel, ABC):
     @abstractmethod
     def like(self): ...
 
@@ -47,7 +47,7 @@ class ReviewForBuyers(ABC):
     def unlike(self): ...
 
 
-class ReviewForModerator(ABC):
+class ReviewForModerator(BaseModel, ABC):
     @abstractmethod
     def get_author(self) -> Buyer: ...
 
@@ -58,7 +58,7 @@ class ReviewForModerator(ABC):
     def hide(self): ...
 
 
-class ReviewForSeller(ABC):
+class ReviewForSeller(BaseModel, ABC):
     @abstractmethod
     def to_moderation(self): ...
 
@@ -67,7 +67,6 @@ class ReviewForSeller(ABC):
 
 
 class Review(
-    BaseModel,
     ReviewForAuthor,
     ReviewForBuyers,
     ReviewForModerator,

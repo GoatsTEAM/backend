@@ -1,5 +1,4 @@
 from app.models.ModerationRequest import (
-    ModerationRequest,
     ModerationRequestStatus,
 )
 
@@ -8,12 +7,12 @@ def test_moderation_request_to_dict(moderation_request):
     assert moderation_request.to_dict() == {
         "id": moderation_request.id,
         "review": moderation_request.review,
-        "complainant": moderation_request.complainant,
-        "complainee": moderation_request.complainee,
+        "complainant": moderation_request.complainant.to_dict(),
+        "complainee": moderation_request.complainee.to_dict(),
         "description": moderation_request.description,
         "created_at": moderation_request.created_at,
         "closed_at": moderation_request.closed_at,
-        "moderator": moderation_request.moderator,
+        "moderator": moderation_request.moderator.to_dict(),
         "status": moderation_request.status,
     }
 
