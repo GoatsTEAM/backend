@@ -1,7 +1,7 @@
 import pytest
 from faker import Faker
 
-from app.models.ModerationRequest import (
+from app.models.moderation_request import (
     ModerationRequest,
     ModerationRequestStatus,
 )

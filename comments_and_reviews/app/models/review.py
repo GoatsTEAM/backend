@@ -6,8 +6,8 @@ from enum import Enum
 from typing import Any
 
 
-from app.models.Base import BaseModel
-from app.models.User import Buyer
+from app.models.base import BaseModel
+from app.models.user import Buyer
 
 
 class ReviewStatus(str, Enum):
@@ -22,6 +22,9 @@ class ReviewContent:
     text: str | None
     media: list[str] | None
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
 
 @dataclass
 class ReviewMetadata:
@@ -30,24 +33,23 @@ class ReviewMetadata:
     edited_at: datetime
     created_at: datetime
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
     def touch(self):
         self.edited_at = datetime.now()
 
 
-class ReviewForAuthor(BaseModel, ABC):
+class Review(BaseModel, ABC):
+    pass
+
+
+class ReviewForAuthor(Review, ABC):
     @abstractmethod
     def update(self, content: ReviewContent): ...
 
 
-class ReviewForBuyers(BaseModel, ABC):
-    @abstractmethod
-    def like(self): ...
-
-    @abstractmethod
-    def unlike(self): ...
-
-
-class ReviewForModerator(BaseModel, ABC):
+class ReviewForModerator(Review, ABC):
     @abstractmethod
     def get_author(self) -> Buyer: ...
 
@@ -58,7 +60,7 @@ class ReviewForModerator(BaseModel, ABC):
     def hide(self): ...
 
 
-class ReviewForSeller(BaseModel, ABC):
+class ReviewForSeller(Review, ABC):
     @abstractmethod
     def to_moderation(self): ...
 
@@ -66,9 +68,8 @@ class ReviewForSeller(BaseModel, ABC):
     def add_answer(self, answer: str): ...
 
 
-class Review(
+class ReviewImpl(
     ReviewForAuthor,
-    ReviewForBuyers,
     ReviewForModerator,
     ReviewForSeller,
 ):
@@ -95,23 +96,16 @@ class Review(
             "id": self.id,
             "author": self.author.to_dict(),
             "status": self.status,
-            "content": asdict(self.content),
+            "content": self.content.to_dict(),
             "answer": self.answer,
             "likes": self.likes,
-            "metadata": asdict(self.metadata),
+            "metadata": self.metadata.to_dict(),
         }
 
     def update(self, content: ReviewContent):
         self.content = content
         self.metadata.touch()
         self.to_moderation()
-
-    def like(self):
-        self.likes += 1
-
-    def unlike(self):
-        if self.likes > 0:
-            self.likes -= 1
 
     def publish(self):
         self.status = ReviewStatus.PUBLISHED

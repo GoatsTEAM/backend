@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 from bson.objectid import ObjectId
 
-from app.models.Base import BaseModel
+from app.models.base import BaseModel
 
 
 class User(BaseModel, ABC):

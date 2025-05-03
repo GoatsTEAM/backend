@@ -2,14 +2,14 @@ import pytest
 
 from faker import Faker
 
-from app.models.Reviewable import Reviewable
+from app.models.reviews_statistics import ReviewsStatistics
 
 fake = Faker()
 
 
 @pytest.fixture
-def empty_reviewable(id) -> Reviewable:
-    return Reviewable(id, 0, 0)
+def empty_reviewable(id) -> ReviewsStatistics:
+    return ReviewsStatistics(id, 0, 0)
 
 
 @pytest.fixture

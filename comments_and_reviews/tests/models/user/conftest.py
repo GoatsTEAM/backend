@@ -1,6 +1,6 @@
 import pytest
 from faker import Faker
-from app.models.User import Moderator, Seller, Buyer
+from app.models.user import Moderator, Seller, Buyer
 
 fake = Faker()
 

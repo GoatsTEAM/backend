@@ -1,6 +1,6 @@
 from dataclasses import asdict
 
-from app.models.Review import ReviewStatus
+from app.models.review import ReviewStatus
 
 
 def test_metadata_touch(metadata):
@@ -37,21 +37,6 @@ class TestRevewForAuthor:
         review_for_author.update(content)
         assert review_for_author.content == content
         assert review_for_author.status == ReviewStatus.PENDING
-
-
-class TestReviewForBuyer:
-    def test_like(self, review_for_buyer):
-        review_for_buyer.like()
-        assert review_for_buyer.likes == 1
-
-    def test_unlike(self, review_for_buyer):
-        review_for_buyer.unlike()
-        assert review_for_buyer.likes == 0
-
-    def test_unlike_nonzero_likes(self, review_for_buyer):
-        review_for_buyer.likes = 1
-        review_for_buyer.unlike()
-        assert review_for_buyer.likes == 0
 
 
 class TestReviewForModerator:

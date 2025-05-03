@@ -2,9 +2,9 @@ from datetime import datetime
 from enum import Enum
 from bson.objectid import ObjectId
 
-from app.models.Base import BaseModel
-from app.models.Review import ReviewForModerator
-from app.models.User import User, Moderator
+from app.models.base import BaseModel
+from app.models.review import ReviewForModerator
+from app.models.user import User, Moderator
 
 
 class ModerationRequestStatus(str, Enum):

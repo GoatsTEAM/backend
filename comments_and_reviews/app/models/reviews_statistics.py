@@ -1,9 +1,9 @@
 from bson.objectid import ObjectId
 
-from app.models.Base import BaseModel
+from app.models.base import BaseModel
 
 
-class Reviewable(BaseModel):
+class ReviewsStatistics(BaseModel):
     def __init__(self, id: ObjectId, average_rating: int, reviews_count: int):
         self.id = id
         self.average_rating = average_rating
@@ -41,9 +41,9 @@ class Reviewable(BaseModel):
             self.reviews_count -= 1
 
 
-class Product(Reviewable):
+class ProductStatistics(ReviewsStatistics):
     pass
 
 
-class Store(Reviewable):
+class StoreStatistics(ReviewsStatistics):
     pass
