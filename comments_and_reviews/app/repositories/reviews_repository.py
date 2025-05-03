@@ -15,7 +15,7 @@ from app.models.user import Buyer
 class ReviewsRepository(ABC):
     @abstractmethod
     async def get_reviews_by_product_id(
-        self, product_id: ObjectId
+        self, product_id: int
     ) -> list[Review]: ...
 
     @abstractmethod
@@ -34,15 +34,15 @@ class ReviewsRepositoryForAuthor(ReviewsRepository, ABC):
     ) -> Review: ...
 
     @abstractmethod
-    async def delete(self, author_id: ObjectId, review_id: ObjectId): ...
+    async def delete(self, author_id: int, review_id: ObjectId): ...
 
 
 class ReviewsRepositoryForBuyers(ReviewsRepository, ABC):
     @abstractmethod
-    async def like(self, user_id: ObjectId, review_id: ObjectId): ...
+    async def like(self, user_id: int, review_id: ObjectId): ...
 
     @abstractmethod
-    async def dislike(self, user_id: ObjectId, review_id: ObjectId): ...
+    async def dislike(self, user_id: int, review_id: ObjectId): ...
 
 
 class ReviewsRepositoryForSellers(ReviewsRepository, ABC):

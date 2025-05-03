@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from bson.objectid import ObjectId
 
 from app.models.base import BaseModel
 
@@ -11,7 +10,7 @@ class User(BaseModel, ABC):
 
 
 class Buyer(User):
-    def __init__(self, id: ObjectId, name: str, banned: bool, avatar: str):
+    def __init__(self, id: int, name: str, banned: bool, avatar: str):
         self.id = id
         self.name = name
         self.banned = banned
@@ -39,7 +38,7 @@ class Buyer(User):
 
 
 class Seller(User):
-    def __init__(self, id: ObjectId, name: str, banned: bool):
+    def __init__(self, id: int, name: str, banned: bool):
         self.id = id
         self.name = name
         self.banned = banned
@@ -56,7 +55,7 @@ class Seller(User):
 
 
 class Moderator(User):
-    def __init__(self, id: ObjectId, name: str):
+    def __init__(self, id: int, name: str):
         self.id = id
         self.name = name
 

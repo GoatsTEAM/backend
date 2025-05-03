@@ -12,7 +12,7 @@ class ReviewInteractionsService:
         self.reviews = reviews_repository
         self.users = users_repository
 
-    async def like_review(self, user_id: ObjectId, review_id: ObjectId):
+    async def like_review(self, user_id: int, review_id: ObjectId):
         user = await self.users.get_buyer_by_id(user_id)
         if user is None:
             raise ValueError("User not found")
@@ -21,7 +21,7 @@ class ReviewInteractionsService:
 
         await self.reviews.like(user_id, review_id)
 
-    async def dislike_review(self, user_id: ObjectId, review_id: ObjectId):
+    async def dislike_review(self, user_id: int, review_id: ObjectId):
         user = await self.users.get_buyer_by_id(user_id)
         if user is None:
             raise ValueError("User not found")

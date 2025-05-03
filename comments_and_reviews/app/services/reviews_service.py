@@ -1,5 +1,6 @@
 from datetime import datetime
 from bson.objectid import ObjectId
+
 from app.repositories.reviews_repository import ReviewsRepositoryForAuthor
 from app.repositories.users_repository import UsersRepository
 from app.models.review import (
@@ -10,13 +11,13 @@ from app.models.review import (
 from app.models.user import Buyer
 
 
-async def get_metadata(product_id: ObjectId) -> ReviewMetadata:
+async def get_metadata(product_id: int) -> ReviewMetadata:
     # TODO: check if product exists
     # TODO: get order status
     return ReviewMetadata(product_id, False, datetime.now(), datetime.now())
 
 
-async def get_user_info(user_id: ObjectId) -> Buyer:
+async def get_user_info(user_id: int) -> Buyer:
     # TODO: check if user exists and not banned
     # TODO: get user data
     return Buyer(user_id, "John Doe", False, "")
@@ -32,7 +33,7 @@ class ReviewsService:
         self.users = users_repository
 
     async def create_review(
-        self, author_id: ObjectId, product_id: ObjectId, content: ReviewContent
+        self, author_id: int, product_id: int, content: ReviewContent
     ) -> Review:
         user = await self.users.get_buyer_by_id(author_id)
         if user is None:
@@ -47,7 +48,7 @@ class ReviewsService:
         return await self.reviews.create(user, content, metadata)
 
     async def update_review(
-        self, author_id: ObjectId, review_id: ObjectId, content: ReviewContent
+        self, author_id: int, review_id: ObjectId, content: ReviewContent
     ) -> Review:
         user = await self.users.get_buyer_by_id(author_id)
         if user is None:
@@ -63,5 +64,5 @@ class ReviewsService:
         await self.reviews.save(review)
         return review
 
-    async def delete_review(self, author_id: ObjectId, review_id: ObjectId):
+    async def delete_review(self, author_id: int, review_id: ObjectId):
         await self.reviews.delete(author_id, review_id)

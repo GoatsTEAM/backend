@@ -1,4 +1,3 @@
-from bson.objectid import ObjectId
 from app.repositories.reviews_repository import ReviewsRepository
 from app.repositories.products_repository import ProductsRepository
 from app.repositories.stores_repository import StoresRepository
@@ -17,13 +16,11 @@ class ProductReviewsService:
         self.products = products_repository
         self.stores = stores_repository
 
-    async def get_reviews(self, product_id: ObjectId) -> list[Review]:
+    async def get_reviews(self, product_id: int) -> list[Review]:
         return await self.reviews.get_reviews_by_product_id(product_id)
 
-    async def get_product_stats(
-        self, product_id: ObjectId
-    ) -> ProductStatistics:
+    async def get_product_stats(self, product_id: int) -> ProductStatistics:
         return await self.products.get_stats(product_id)
 
-    async def get_store_stats(self, store_id: ObjectId) -> StoreStatistics:
+    async def get_store_stats(self, store_id: int) -> StoreStatistics:
         return await self.stores.get_stats(store_id)

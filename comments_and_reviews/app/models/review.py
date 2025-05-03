@@ -28,7 +28,7 @@ class ReviewContent:
 
 @dataclass
 class ReviewMetadata:
-    product_id: ObjectId
+    product_id: int
     returned_order: bool
     edited_at: datetime
     created_at: datetime

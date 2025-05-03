@@ -1,10 +1,8 @@
-from bson.objectid import ObjectId
-
 from app.models.base import BaseModel
 
 
 class ReviewsStatistics(BaseModel):
-    def __init__(self, id: ObjectId, average_rating: int, reviews_count: int):
+    def __init__(self, id: int, average_rating: int, reviews_count: int):
         self.id = id
         self.average_rating = average_rating
         self.reviews_count = reviews_count
