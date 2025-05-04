@@ -1,0 +1,32 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init_db:/docker-entrypoint-initdb.d
+
+  app:
+    build: .
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+      - ./.env:/app/.env
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}"
+      REST_PORT: ${REST_PORT}
+      GRPC_PORT: ${GRPC_PORT}
+    ports:
+      - "${REST_PORT}:${REST_PORT}"
+      - "${GRPC_PORT}:${GRPC_PORT}"
+#    command: gunicorn src.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${REST_PORT} --workers 1 --reload
