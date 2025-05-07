@@ -1,66 +1,54 @@
 from datetime import datetime
 from enum import Enum
-from bson.objectid import ObjectId
-
-from app.models.base import BaseModel
-from app.models.review import ReviewForModerator
-from app.models.user import User, Moderator
+from pydantic import BaseModel
 
 
-class ModerationRequestStatus(str, Enum):
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
+class DecisionStatus(str, Enum):
+    APPROVED_REVIEW = "approved"
+    REJECTED_REVIEW = "rejected"
+
+
+class Decision(BaseModel):
+    moderator_id: str
+    status: DecisionStatus
+    reason: str
+    added_at: datetime = datetime.now()
+
+    @classmethod
+    def approve_review(cls, moderator_id: str, reason: str) -> "Decision":
+        return cls(
+            moderator_id=moderator_id,
+            status=DecisionStatus.APPROVED_REVIEW,
+            reason=reason,
+        )
+
+    @classmethod
+    def reject_review(cls, moderator_id: str, reason: str) -> "Decision":
+        if not reason:
+            raise ValueError("Reason is required")
+        return cls(
+            moderator_id=moderator_id,
+            status=DecisionStatus.REJECTED_REVIEW,
+            reason=reason,
+        )
 
 
 class ModerationRequest(BaseModel):
-    def __init__(
-        self,
-        id: ObjectId,
-        review: ReviewForModerator,
-        created_by: User,
-        description: str,
-        created_at: datetime,
-        closed_at: datetime | None,
-        moderator: Moderator,
-        status: ModerationRequestStatus,
-    ):
-        self.id = id
-        self.review = review
-        self.complainant = created_by
-        self.complainee = review.get_author()
-        self.description = description
-        self.created_at = created_at
-        self.closed_at = closed_at
-        self.moderator = moderator
-        self.status = status
+    id: str
+    review_id: str
+    description: str
+    created_at: datetime = datetime.now()
+    decision: Decision | None = None
 
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "review": self.review,
-            "complainant": self.complainant.to_dict(),
-            "complainee": self.complainee.to_dict(),
-            "description": self.description,
-            "created_at": self.created_at,
-            "closed_at": self.closed_at,
-            "moderator": self.moderator.to_dict(),
-            "status": self.status,
-        }
+    def close(self, decision: Decision) -> "ModerationRequest":
+        if self.decision is not None:
+            raise ValueError("Request already closed")
+        return self.model_copy(update={"decision": decision})
 
-    def reject(self):
-        self.status = ModerationRequestStatus.REJECTED
-        self.closed_at = datetime.now()
-        self.review.hide()
+    def is_opened(self) -> bool:
+        return self.decision is None
 
-    def reject_and_ban(self):
-        self.reject()
-        self.moderator.ban_user(self.complainee)
-
-    def approve(self):
-        self.status = ModerationRequestStatus.APPROVED
-        self.closed_at = datetime.now()
-        self.review.publish()
-
-    def get_complainee(self):
-        return self.complainee
+    def get_decision(self) -> Decision:
+        if self.is_opened():
+            raise ValueError("Request is not closed")
+        return self.decision  # type: ignore

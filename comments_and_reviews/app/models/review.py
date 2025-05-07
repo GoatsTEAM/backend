@@ -1,13 +1,21 @@
-from abc import ABC, abstractmethod
-from bson.objectid import ObjectId
-from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from pydantic import BaseModel, Field
 
 
-from app.models.base import BaseModel
-from app.models.user import Buyer
+class ReviewContent(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    text: str | None
+    media: list[str] = []
+
+
+class ReviewMetadata(BaseModel):
+    product_id: int
+    edited_at: datetime = datetime.now()
+    created_at: datetime = datetime.now()
+
+    def touch(self) -> "ReviewMetadata":
+        return self.model_copy(update={"edited_at": datetime.now()})
 
 
 class ReviewStatus(str, Enum):
@@ -16,108 +24,52 @@ class ReviewStatus(str, Enum):
     HIDDEN = "hidden"
 
 
-@dataclass
-class ReviewContent:
-    rating: int
-    text: str | None
-    media: list[str] | None
+class Review(BaseModel):
+    id: str
+    author_id: str
+    status: ReviewStatus
+    content: ReviewContent
+    metadata: ReviewMetadata
+    answer: str | None = None
+    likes: int = Field(default=0, ge=0)
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+    def update_content(self, new_content: ReviewContent) -> "Review":
+        if not self.is_editable():
+            raise ValueError("Can't update hidden review")
+        return self.model_copy(
+            update={
+                "content": new_content,
+                "metadata": self.metadata.touch(),
+                "status": ReviewStatus.PENDING,
+            }
+        )
 
+    def is_editable(self) -> bool:
+        return self.status in (ReviewStatus.PUBLISHED, ReviewStatus.PENDING)
 
-@dataclass
-class ReviewMetadata:
-    product_id: int
-    returned_order: bool
-    edited_at: datetime
-    created_at: datetime
+    def publish(self) -> "Review":
+        if not self.is_on_moderation():
+            raise ValueError("Only pending review can be published")
+        return self.model_copy(update={"status": ReviewStatus.PUBLISHED})
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+    def hide(self) -> "Review":
+        if not self.is_on_moderation():
+            raise ValueError("Can't hide hidden review")
+        return self.model_copy(update={"status": ReviewStatus.HIDDEN})
 
-    def touch(self):
-        self.edited_at = datetime.now()
+    def is_on_moderation(self) -> bool:
+        return self.status == ReviewStatus.PENDING
 
+    def to_moderation(self) -> "Review":
+        if not self.is_published():
+            raise ValueError("Only published review can be sent to moderation")
+        return self.model_copy(update={"status": ReviewStatus.PENDING})
 
-class Review(BaseModel, ABC):
-    pass
+    def is_published(self) -> bool:
+        return self.status == ReviewStatus.PUBLISHED
 
+    def add_answer(self, answer: str) -> "Review":
+        return self.model_copy(update={"answer": answer})
 
-class ReviewForAuthor(Review, ABC):
-    @abstractmethod
-    def update(self, content: ReviewContent): ...
-
-
-class ReviewForModerator(Review, ABC):
-    @abstractmethod
-    def get_author(self) -> Buyer: ...
-
-    @abstractmethod
-    def publish(self): ...
-
-    @abstractmethod
-    def hide(self): ...
-
-
-class ReviewForSeller(Review, ABC):
-    @abstractmethod
-    def to_moderation(self): ...
-
-    @abstractmethod
-    def add_answer(self, answer: str): ...
-
-
-class ReviewImpl(
-    ReviewForAuthor,
-    ReviewForModerator,
-    ReviewForSeller,
-):
-    def __init__(
-        self,
-        id: ObjectId,
-        author: Buyer,
-        status: ReviewStatus,
-        content: ReviewContent,
-        answer: str | None,
-        likes: int,
-        metadata: ReviewMetadata,
-    ):
-        self.id = id
-        self.author = author
-        self.status = status
-        self.content = content
-        self.answer = answer
-        self.likes = likes
-        self.metadata = metadata
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "author": self.author.to_dict(),
-            "status": self.status,
-            "content": self.content.to_dict(),
-            "answer": self.answer,
-            "likes": self.likes,
-            "metadata": self.metadata.to_dict(),
-        }
-
-    def update(self, content: ReviewContent):
-        self.content = content
-        self.metadata.touch()
-        self.to_moderation()
-
-    def publish(self):
-        self.status = ReviewStatus.PUBLISHED
-
-    def hide(self):
-        self.status = ReviewStatus.HIDDEN
-
-    def to_moderation(self):
-        self.status = ReviewStatus.PENDING
-
-    def add_answer(self, answer: str):
-        self.answer = answer
-
-    def get_author(self) -> Buyer:
-        return self.author
+    def has_answer(self) -> bool:
+        return self.answer is not None

@@ -1,47 +1,31 @@
-from app.models.base import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ReviewsStatistics(BaseModel):
-    def __init__(self, id: int, average_rating: int, reviews_count: int):
-        self.id = id
-        self.average_rating = average_rating
-        self.reviews_count = reviews_count
+    id: str
+    average_rating: float = Field(default=0, ge=0, le=5)
+    reviews_count: int = Field(default=0, ge=0)
 
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "average_rating": self.average_rating,
-            "reviews_count": self.reviews_count,
-        }
-
-    def add_review(self, rating: int):
-        self.average_rating = (
+    def add_review(self, rating: float) -> "ReviewsStatistics":
+        new_count = self.reviews_count + 1
+        new_rating = (
             self.average_rating * self.reviews_count + rating
-        ) / (self.reviews_count + 1)
-        self.reviews_count += 1
+        ) / new_count
+        return self.model_copy(
+            update={
+                "average_rating": new_rating,
+                "reviews_count": new_count,
+            }
+        )
 
-    def update_review(self, old_rating: int, new_rating: int):
-        if self.reviews_count == 0:
-            return
-
-        self.average_rating = (
-            self.average_rating * self.reviews_count - old_rating + new_rating
-        ) / self.reviews_count
-
-    def delete_review(self, rating: int):
-        if self.reviews_count <= 1:
-            self.average_rating = 0
-            self.reviews_count = 0
-        else:
-            self.average_rating = (
-                self.average_rating * self.reviews_count - rating
-            ) / (self.reviews_count - 1)
-            self.reviews_count -= 1
-
-
-class ProductStatistics(ReviewsStatistics):
-    pass
-
-
-class StoreStatistics(ReviewsStatistics):
-    pass
+    def remove_review(self, rating: float) -> "ReviewsStatistics":
+        new_count = self.reviews_count - 1
+        new_rating = (
+            self.average_rating * self.reviews_count - rating
+        ) / new_count
+        return self.model_copy(
+            update={
+                "average_rating": new_rating,
+                "reviews_count": new_count,
+            }
+        )
