@@ -1,68 +1,78 @@
-from datetime import datetime
-from bson.objectid import ObjectId
-
-from app.repositories.reviews_repository import ReviewsRepositoryForAuthor
-from app.repositories.users_repository import UsersRepository
-from app.models.review import (
-    Review,
-    ReviewContent,
-    ReviewMetadata,
+from app.models.review import ReviewContent, ReviewMetadata, Review
+from app.models.actor import Actor
+from app.repositories.reviews_repository import ReviewsRepository
+from app.repositories.reviews_statistics_repository import (
+    ReviewsStatisticsRepository,
 )
-from app.models.user import Buyer
 
 
-async def get_metadata(product_id: int) -> ReviewMetadata:
-    # TODO: check if product exists
-    # TODO: get order status
-    return ReviewMetadata(product_id, False, datetime.now(), datetime.now())
-
-
-async def get_user_info(user_id: int) -> Buyer:
-    # TODO: check if user exists and not banned
-    # TODO: get user data
-    return Buyer(user_id, "John Doe", False, "")
+async def get_metadata(product_id: str) -> ReviewMetadata:
+    # TODO:
+    # check if product exists
+    # get order status
+    return ReviewMetadata(product_id=product_id)
 
 
 class ReviewsService:
     def __init__(
         self,
-        reviews_repository: ReviewsRepositoryForAuthor,
-        users_repository: UsersRepository,
+        reviews_repository: ReviewsRepository,
+        reviews_statistics_repository: ReviewsStatisticsRepository,
     ):
         self.reviews = reviews_repository
-        self.users = users_repository
+        self.stats = reviews_statistics_repository
 
     async def create_review(
-        self, author_id: int, product_id: int, content: ReviewContent
+        self, product_id: str, author: Actor, content: ReviewContent
     ) -> Review:
-        user = await self.users.get_buyer_by_id(author_id)
-        if user is None:
-            user = await get_user_info(author_id)
-            user = self.users.create(user)
-            assert isinstance(user, Buyer)
-
-        if user.is_banned():
-            raise ValueError("User is banned")
+        if not author.is_buyer():
+            raise ValueError("Only buyer can create review")
 
         metadata = await get_metadata(product_id)
-        return await self.reviews.create(user, content, metadata)
+        return await self.reviews.create_review(
+            author_id=author.id,
+            content=content,
+            metadata=metadata,
+        )
 
     async def update_review(
-        self, author_id: int, review_id: ObjectId, content: ReviewContent
-    ) -> Review:
-        user = await self.users.get_buyer_by_id(author_id)
-        if user is None:
-            raise ValueError("User not found")
-        if user.is_banned():
-            raise ValueError("User is banned")
+        self, author: Actor, review_id: str, content: ReviewContent
+    ) -> tuple[Review, Review]:
+        if not author.is_buyer():
+            raise ValueError("Only buyer can update review")
 
-        review = await self.reviews.get_review_for_author_by_id(review_id)
+        old_review = await self.reviews.get_review_by_id(review_id)
+        if old_review is None:
+            raise ValueError("Review not found")
+
+        if not old_review.check_author(author.id):
+            raise ValueError("Only author can update review")
+
+        new_review = old_review.update_content(content)
+        await self.reviews.save(new_review)
+        return new_review, old_review
+
+    async def delete_review(self, author: Actor, review_id: str) -> Review:
+        if not author.is_buyer():
+            raise ValueError("Only buyer can delete review")
+
+        review = await self.reviews.get_review_by_id(review_id)
         if review is None:
             raise ValueError("Review not found")
 
-        review.update(content)
-        await self.reviews.save(review)
+        if not review.check_author(author.id):
+            raise ValueError("Only author can delete review")
+
+        await self.reviews.save(review.hide())
         return review
 
-    async def delete_review(self, author_id: int, review_id: ObjectId):
-        await self.reviews.delete(author_id, review_id)
+    async def get_reviews_by_product(self, product_id: str) -> list[Review]:
+        return await self.reviews.get_reviews_by_product_id(product_id)
+
+    async def get_reviews_by_author(self, author: Actor) -> list[Review]:
+        if not author.is_buyer():
+            raise ValueError("Only buyer can get reviews by author")
+        return await self.reviews.get_reviews_by_author_id(author.id)
+
+    async def get_review_by_id(self, review_id: str) -> Review | None:
+        return await self.reviews.get_review_by_id(review_id)
