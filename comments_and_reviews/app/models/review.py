@@ -10,7 +10,7 @@ class ReviewContent(BaseModel):
 
 
 class ReviewMetadata(BaseModel):
-    product_id: int
+    product_id: str
     edited_at: datetime = datetime.now()
     created_at: datetime = datetime.now()
 
@@ -27,11 +27,11 @@ class ReviewStatus(str, Enum):
 class Review(BaseModel):
     id: str
     author_id: str
-    status: ReviewStatus
     content: ReviewContent
     metadata: ReviewMetadata
     answer: str | None = None
     likes: int = Field(default=0, ge=0)
+    status: ReviewStatus = ReviewStatus.PENDING
 
     def update_content(self, new_content: ReviewContent) -> "Review":
         if not self.is_editable():
@@ -73,3 +73,12 @@ class Review(BaseModel):
 
     def has_answer(self) -> bool:
         return self.answer is not None
+
+    def check_author(self, author_id: str) -> bool:
+        return self.author_id == author_id
+
+    def get_product(self) -> str:
+        return self.metadata.product_id
+
+    def get_rating(self) -> int:
+        return self.content.rating
