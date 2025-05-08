@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 
-from app.models.user import User, Buyer
+from app.models.user import User
 
 
 class UsersRepository(ABC):
     @abstractmethod
-    async def get_buyer_by_id(self, id: int) -> Buyer | None: ...
+    async def get_user_by_id(self, user_id: int) -> User | None: ...
 
     @abstractmethod
-    async def create(self, user: User) -> User: ...
+    async def save(self, user: User): ...
