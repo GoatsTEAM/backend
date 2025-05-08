@@ -16,7 +16,7 @@ class ReviewsRepository(ABC):
     async def save(self, review: Review): ...
 
     @abstractmethod
-    async def get_reviews_by_product_id(
+    async def get_published_reviews_by_product_id(
         self, product_id: str
     ) -> list[Review]: ...
 
