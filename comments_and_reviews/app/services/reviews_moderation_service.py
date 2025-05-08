@@ -1,7 +1,7 @@
 from app.models.actor import Actor
 from app.models.moderation_request import ModerationRequest, Decision
-from app.repositories.moderation_request_repository import (
-    ModerationRequestRepository,
+from app.repositories.moderation_requests_repository import (
+    ModerationRequestsRepository,
 )
 from app.repositories.reviews_repository import ReviewsRepository
 
@@ -9,7 +9,7 @@ from app.repositories.reviews_repository import ReviewsRepository
 class ReviewsModerationService:
     def __init__(
         self,
-        moderation_requests_repository: ModerationRequestRepository,
+        moderation_requests_repository: ModerationRequestsRepository,
         reviews_repository: ReviewsRepository,
     ):
         self.requests = moderation_requests_repository
@@ -40,7 +40,7 @@ class ReviewsModerationService:
     async def get_requests(self, moderator: Actor) -> list[ModerationRequest]:
         if not moderator.is_moderator():
             raise ValueError("Only moderator can get requests")
-        return await self.requests.get_moderation_requests()
+        return await self.requests.get_opened_moderation_requests()
 
     async def get_request_by_id(
         self, request_id: str

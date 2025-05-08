@@ -25,20 +25,24 @@ class ReviewsStatisticsService:
         ):
             return
 
-        statistics = await self.stats.get_stats(product_id)
-        if statistics is None:
-            return
+        async with await self.stats.lock(product_id):
+            statistics = await self.stats.get_stats(product_id)
+            if statistics is None:
+                return
 
-        if old_rating is not None:
-            statistics.remove_review(old_rating)
+            if old_rating is not None:
+                statistics.remove_review(old_rating)
 
-        if new_rating is not None:
-            statistics.add_review(new_rating)
+            if new_rating is not None:
+                statistics.add_review(new_rating)
 
-        await self.stats.save(statistics)
+            await self.stats.save(statistics)
 
     async def get_stats(self, product_id: str) -> ReviewsStatistics:
-        stats = await self.stats.get_stats(product_id)
-        if stats is None:
-            stats = await self.reviews.calculate_stats(product_id)
+        async with await self.stats.lock(product_id):
+            stats = await self.stats.get_stats(product_id)
+            if stats is None:
+                stats = await self.reviews.calculate_stats(product_id)
+                await self.stats.save(stats)
+
         return stats

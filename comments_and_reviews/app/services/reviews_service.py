@@ -67,7 +67,9 @@ class ReviewsService:
         return review
 
     async def get_reviews_by_product(self, product_id: str) -> list[Review]:
-        return await self.reviews.get_reviews_by_product_id(product_id)
+        return await self.reviews.get_published_reviews_by_product_id(
+            product_id
+        )
 
     async def get_reviews_by_author(self, author: Actor) -> list[Review]:
         if not author.is_buyer():
