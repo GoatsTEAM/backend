@@ -12,8 +12,7 @@ class Settings(BaseSettings):
     def DB_URL(self) -> str:
         auth = f"{self.DB_USER}:{self.DB_PASSWORD}"
         connection = f"{self.DB_HOST}:{self.DB_PORT}"
-        db = self.DB_NAME
-        return f"mongodb://{auth}@{connection}/{db}"
+        return f"mongodb://{auth}@{connection}"
 
     REDIS_HOST: str = "localhost"
     REDIS_PORT: str = "6379"
@@ -30,7 +29,9 @@ class Settings(BaseSettings):
 
     KAFKA_HOST: str = "localhost"
     KAFKA_PORT: str = "9092"
-    KAFKA_TOPIC: str = "comments"
+    KAFKA_REQUEST_TOPIC: str = "comments"
+    KAFKA_RESPONSE_TOPIC: str = "gateway"
+    KAFKA_GROUP_ID: str = "comments-service"
 
     @property
     def KAFKA_BOOTSTRAP_SERVERS(self) -> str:
