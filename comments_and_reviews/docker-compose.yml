@@ -1,0 +1,75 @@
+services:
+  mongodb:
+    container_name: comments-db
+    image: mongo:8.0.9
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=$DB_USER
+      - MONGO_INITDB_ROOT_PASSWORD=$DB_PASSWORD
+      - MONGO_INITDB_DATABASE=$DB_NAME
+    env_file:
+      - .env
+    volumes:
+      - comments-mongo-data:/data/db
+    networks:
+      - comments-network
+
+  broker:
+    image: apache/kafka:3.9.0
+    hostname: broker
+    container_name: broker
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:29093
+      KAFKA_LISTENERS: PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - comments-network
+
+  redis:
+    image: redis:8.0.0
+    container_name: comments-cache
+    ports:
+      - "6379:6379"
+    env_file:
+      - .env
+    volumes:
+      - comments-redis-data:/data
+    networks:
+      - comments-network
+
+  comments-and-reviews:
+    container_name: comments-and-reviews
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+      - broker
+      - redis
+    env_file: .env
+    networks:
+      - comments-network
+
+volumes:
+  comments-mongo-data:
+  comments-redis-data:
+
+
+networks:
+  comments-network:
+    driver: bridge
