@@ -1,8 +1,14 @@
-from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
+from pydantic import BaseModel
 
+from app.services import ServicesFactory
 from app.schemas.event import Event
 
 
-class BaseEventHandler(ABC):
-    @abstractmethod
-    async def handle(self, event: Event) -> Event: ...
+Handler = Callable[[BaseModel, ServicesFactory], Awaitable[BaseModel]]
+
+ProtectedHandler = Callable[
+    [str, BaseModel, ServicesFactory], Awaitable[BaseModel]
+]
+
+EventHandler = Callable[[Event, ServicesFactory], Awaitable[Event]]
