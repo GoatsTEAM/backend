@@ -6,5 +6,6 @@ COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY app/ app/
+COPY main.py main.py
 
-CMD ["python", "app/main.py"]
+CMD ["python", "main.py"]
