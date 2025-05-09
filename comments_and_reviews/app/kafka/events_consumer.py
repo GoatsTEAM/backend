@@ -1,5 +1,6 @@
+import asyncio
 from confluent_kafka import Consumer
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 
 from app.schemas.event import Event
 
@@ -14,13 +15,13 @@ class EventsConsumer:
         self.consumer = Consumer(conf)
         self.consumer.subscribe([topic])
 
-    def events(self) -> Generator[Event, None, None]:
+    async def events(self) -> AsyncGenerator[Event, None]:
+        loop = asyncio.get_running_loop()
         try:
             while True:
-                event = self._poll_event()
+                event = await loop.run_in_executor(None, self._poll_event)
                 if event is None:
                     continue
-
                 yield event
         finally:
             self.consumer.close()
