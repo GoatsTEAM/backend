@@ -2,12 +2,12 @@ services:
   mongodb:
     container_name: comments-db
     image: mongo:8.0.9
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=$DB_USER
-      - MONGO_INITDB_ROOT_PASSWORD=$DB_PASSWORD
-      - MONGO_INITDB_DATABASE=$DB_NAME
+    # ports:
+    #   - "27017:27017"
+    # environment:
+    # - MONGO_INITDB_ROOT_USERNAME=$DB_USER
+    # - MONGO_INITDB_ROOT_PASSWORD=$DB_PASSWORD
+    # - MONGO_INITDB_DATABASE=$DB_NAME
     env_file:
       - .env
     volumes:
@@ -21,6 +21,8 @@ services:
     container_name: broker
     ports:
       - 9092:9092
+    env_file:
+      - .env
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
@@ -40,11 +42,27 @@ services:
     networks:
       - comments-network
 
+  kafka-init-topics:
+    image: apache/kafka:3.9.0
+    depends_on:
+      - broker
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: "broker:29092"
+    command: >
+      bash -c "
+        /opt/kafka/bin/kafka-topics.sh --create --topic $$KAFKA_REQUEST_TOPIC --bootstrap-server $$KAFKA_BOOTSTRAP_SERVER;
+        /opt/kafka/bin/kafka-topics.sh --create --topic $$KAFKA_RESPONSE_TOPIC --bootstrap-server $$KAFKA_BOOTSTRAP_SERVER;
+      "
+    networks:
+      - comments-network
+
   redis:
     image: redis:8.0.0
     container_name: comments-cache
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "6379:6379"
     env_file:
       - .env
     volumes:
@@ -61,6 +79,7 @@ services:
       - mongodb
       - broker
       - redis
+      - kafka-init-topics
     env_file: .env
     networks:
       - comments-network

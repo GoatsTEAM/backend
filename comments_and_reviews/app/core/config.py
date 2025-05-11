@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     def DB_URL(self) -> str:
         auth = f"{self.DB_USER}:{self.DB_PASSWORD}"
         connection = f"{self.DB_HOST}:{self.DB_PORT}"
-        return f"mongodb://{auth}@{connection}"
+        return f"mongodb://{connection}"
 
     REDIS_HOST: str = "localhost"
     REDIS_PORT: str = "6379"
