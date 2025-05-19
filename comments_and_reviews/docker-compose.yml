@@ -4,10 +4,10 @@ services:
     image: mongo:8.0.9
     # ports:
     #   - "27017:27017"
-    # environment:
-    # - MONGO_INITDB_ROOT_USERNAME=$DB_USER
-    # - MONGO_INITDB_ROOT_PASSWORD=$DB_PASSWORD
-    # - MONGO_INITDB_DATABASE=$DB_NAME
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: $DB_USER
+      MONGO_INITDB_ROOT_PASSWORD: $DB_PASSWORD
+      MONGO_INITDB_DATABASE: $DB_NAME
     env_file:
       - .env
     volumes:
