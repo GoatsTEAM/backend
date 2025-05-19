@@ -23,7 +23,7 @@ class ReviewsService:
         self.stats = reviews_statistics_repository
 
     async def create_review(
-        self, product_id: str, author: Actor, content: ReviewContent
+        self, author: Actor, product_id: str, content: ReviewContent
     ) -> Review:
         if not author.is_buyer():
             raise ValueError("Only buyer can create review")
@@ -71,10 +71,8 @@ class ReviewsService:
             product_id
         )
 
-    async def get_reviews_by_author(self, author: Actor) -> list[Review]:
-        if not author.is_buyer():
-            raise ValueError("Only buyer can get reviews by author")
-        return await self.reviews.get_reviews_by_author_id(author.id)
+    async def get_reviews_by_user(self, user_id: str) -> list[Review]:
+        return await self.reviews.get_reviews_by_author_id(user_id)
 
     async def get_review_by_id(self, review_id: str) -> Review | None:
         return await self.reviews.get_review_by_id(review_id)
