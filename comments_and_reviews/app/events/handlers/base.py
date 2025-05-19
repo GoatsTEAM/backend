@@ -3,7 +3,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from app.services import ServicesFactory
-from app.schemas.event import Event
+from app.events.schemas.event import Event
 
 T = TypeVar("T", bound=BaseModel)
 

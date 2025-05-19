@@ -1,8 +1,8 @@
 import asyncio
 from confluent_kafka import Consumer
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 
-from app.schemas.event import Event
+from app.events.schemas.event import Event
 
 
 class EventsConsumer:

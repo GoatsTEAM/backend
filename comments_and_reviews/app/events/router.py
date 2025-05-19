@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from app.events.handlers.base import Handler, ProtectedHandler, EventHandler
 from app.events.event_handlers_mapper import EventHandlersMapper
-from app.schemas.event import Event
+from app.events.schemas.event import Event
 from app.services import ServicesFactory
 
 

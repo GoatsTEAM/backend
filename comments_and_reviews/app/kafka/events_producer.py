@@ -1,7 +1,7 @@
 import socket
 from confluent_kafka import Producer
 
-from app.schemas.event import Event
+from app.events.schemas.event import Event
 
 
 class EventsProducer:
