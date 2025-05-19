@@ -52,8 +52,8 @@ services:
       KAFKA_BOOTSTRAP_SERVER: "broker:29092"
     command: >
       bash -c "
-        /opt/kafka/bin/kafka-topics.sh --create --topic $$KAFKA_REQUEST_TOPIC --bootstrap-server $$KAFKA_BOOTSTRAP_SERVER;
-        /opt/kafka/bin/kafka-topics.sh --create --topic $$KAFKA_RESPONSE_TOPIC --bootstrap-server $$KAFKA_BOOTSTRAP_SERVER;
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic $$KAFKA_REQUEST_TOPIC --bootstrap-server $$KAFKA_BOOTSTRAP_SERVER;
+        /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --topic $$KAFKA_RESPONSE_TOPIC --bootstrap-server $$KAFKA_BOOTSTRAP_SERVER;
       "
     networks:
       - comments-network
@@ -67,6 +67,16 @@ services:
       - .env
     volumes:
       - comments-redis-data:/data
+    networks:
+      - comments-network
+
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    container_name: comments-prometheus
+    ports:
+      - "9090:9009"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - comments-network
 

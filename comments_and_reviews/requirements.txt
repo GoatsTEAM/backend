@@ -55,6 +55,9 @@ dnspython==2.7.0 ; python_version == "3.12" \
 fastapi==0.115.12 ; python_version == "3.12" \
     --hash=sha256:1e2c2a2646905f9e83d32f04a3f86aff4a286669c6c950ca95b5fd68c2602681 \
     --hash=sha256:e94613d6c05e27be7ffebdd6ea5f388112e5e430c8f7d6494a9d1d88d43e814d
+h11==0.16.0 ; python_version == "3.12" \
+    --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
+    --hash=sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86
 idna==3.10 ; python_version == "3.12" \
     --hash=sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9 \
     --hash=sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3
@@ -149,6 +152,9 @@ motor==3.7.0 ; python_version == "3.12" \
 pottery==3.0.1 ; python_version == "3.12" \
     --hash=sha256:22db1268d7b035800a8c1d225e3806f8b35748f1f5191cbcf364f06fbe11104d \
     --hash=sha256:c0e223ccfa72d620e4ba16e7e381ab6498745f875e6c939c6b396525e9aee112
+prometheus-client==0.22.0 ; python_version == "3.12" \
+    --hash=sha256:18da1d2241ac2d10c8d2110f13eedcd5c7c0c8af18c926e8731f04fc10cd575c \
+    --hash=sha256:c8951bbe64e62b96cd8e8f5d917279d1b9b91ab766793f33d4dce6c228558713
 pydantic-core==2.33.1 ; python_version == "3.12" \
     --hash=sha256:0483847fa9ad5e3412265c1bd72aad35235512d9ce9d27d81a56d935ef489672 \
     --hash=sha256:048831bd363490be79acdd3232f74a0e9951b11b2b4cc058aeb72b22fdc3abe1 \
@@ -337,3 +343,6 @@ typing-extensions==4.13.2 ; python_version == "3.12" \
 typing-inspection==0.4.0 ; python_version == "3.12" \
     --hash=sha256:50e72559fcd2a6367a19f7a7e610e6afcb9fac940c650290eed893d61386832f \
     --hash=sha256:9765c87de36671694a67904bf2c96e395be9c6439bb6c87b5142569dcdd65122
+uvicorn==0.34.2 ; python_version == "3.12" \
+    --hash=sha256:0e929828f6186353a80b58ea719861d2629d766293b6d19baf086ba31d4f3328 \
+    --hash=sha256:deb49af569084536d269fe0a6d67e3754f104cf03aba7c11c40f01aadf33c403
