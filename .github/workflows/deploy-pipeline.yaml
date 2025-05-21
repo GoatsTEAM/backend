@@ -1,74 +1,72 @@
-name: Deploy Changed Services
+name: Deploy changed services
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 1. Клон репозитория
+    - uses: actions/checkout@v3
 
-      - name: Detect changed folders
-        id: detect
-        run: |
-          git fetch origin main
-          folders=$(git diff --name-only HEAD^ HEAD \
-            | cut -d/ -f1 \
-            | sort -u \
-            | tr '\n' ' ')
-          echo "folders=$folders" >> $GITHUB_OUTPUT
+    # 2. Папки верхнего уровня, где что-то поменялось
+    - name: Detect changed folders
+      id: folders
+      run: |
+        git fetch origin main
+        echo "list=$(git diff --name-only HEAD^ HEAD \
+                   | cut -d/ -f1 \
+                   | sort -u \
+                   | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
 
-      - name: Collect service configs
-        id: collect
-        run: |
-          pip install yq > /dev/null
-          services=()
-          composes=()
-          for dir in ${{ steps.detect.outputs.folders }}; do
-            if [[ -f "$dir/deploy.yml" ]]; then
-              svc=$(yq e '.service' "$dir/deploy.yml")
-              cmp=$(yq e '.compose' "$dir/deploy.yml")
-              services+=("$svc")
-              composes+=("$cmp")
-            fi
-          done
-          echo "services=${services[*]}"  >> $GITHUB_OUTPUT
-          echo "composes=${composes[*]}" >> $GITHUB_OUTPUT
+    # 3. Читаем deploy.yml каждой изменённой папки
+    - name: Collect deploy configs
+      id: cfg
+      run: |
+        pip install -q yq
+        svcs=() cmps=()
+        for dir in ${{ steps.folders.outputs.list }}; do
+          [ -f "$dir/deploy.yml" ] || continue
+          svcs+=("$(yq e '.service'  "$dir/deploy.yml")")
+          cmps+=("$(yq e '.compose' "$dir/deploy.yml")")
+        done
+        echo "services=${svcs[*]}"  >> "$GITHUB_OUTPUT"
+        echo "composes=${cmps[*]}"  >> "$GITHUB_OUTPUT"
 
-      - name: Deploy changed services via SSH
-        env:
-          SSH_KEY:      ${{ secrets.ssh_key }}
-          SERVER_IP:    ${{ secrets.server_ip }}
-          DEPLOY_USER:  ${{ secrets.deploy_user }}
-          SERVICES:     ${{ steps.collect.outputs.services }}
-          COMPOSES:     ${{ steps.collect.outputs.composes }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+    # 4. Подключаемся по SSH и перезапускаем изменённые сервисы
+    - name: Deploy via SSH
+      env:
+        SVC_LIST:  ${{ steps.cfg.outputs.services }}
+        CMP_LIST:  ${{ steps.cfg.outputs.composes }}
+        SSH_HOST:  ${{ secrets.server_ip }}
+        SSH_USER:  ${{ secrets.deploy_user }}
+        SSH_KEY:   ${{ secrets.ssh_key }}
+      run: |
+        # --- подготовка SSH ---
+        install -m 600 /dev/null ~/.ssh/id_rsa
+        echo "$SSH_KEY" > ~/.ssh/id_rsa
+        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-          i=1
-          for svc in $SERVICES; do
-            cmp=$(echo $COMPOSES | cut -d' ' -f $i)
-            echo "🔧 Deploying $svc from compose directory: $cmp"
+        # --- цикл по сервисам ---
+        idx=1
+        for svc in $SVC_LIST; do
+          cmp=$(echo $CMP_LIST | cut -d' ' -f $idx)
+          echo "▶ $svc  (compose dir: $cmp)"
 
-            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-                "$DEPLOY_USER@$SERVER_IP" bash -s <<EOF
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" bash -s <<'EOSSH'
+set -e
+svc="$1"; cmp="$2"
 cd "$cmp"
-if docker compose config --services | grep -q "^\${svc}\$"; then
-  echo "✅ Building and restarting service '\${svc}'..."
-  docker compose build "\${svc}"
-  docker compose up -d "\${svc}"
+if docker compose config --services | grep -qx "$svc"; then
+  docker compose build "$svc"
+  docker compose up -d  "$svc"
 else
-  echo "⚠️  Service '\${svc}' not defined in compose — skipping."
+  echo "Service '$svc' не найден в docker-compose.yml — пропускаем."
 fi
-EOF
+EOSSH "$svc" "$cmp"
 
-            i=$((i + 1))
-          done
+          idx=$((idx + 1))
+        done
