@@ -27,18 +27,31 @@ jobs:
     #------------------------------------------------------------------#
     # 3. собираем service/compose из deploy.yaml
     #------------------------------------------------------------------#
-    - id: cfg
-      name: Read deploy.yaml
+    - name: 🔍 Проверка SSH-соединения
+      env:
+        SSH_KEY:   ${{ secrets.ssh_key }}
+        SSH_USER:  ${{ secrets.deploy_user }}
+        SSH_HOST:  ${{ secrets.server_ip }}
       run: |
-        pip install -q yq
-        S=() C=()
-        for d in ${{ steps.folders.outputs.list }}; do
-          [ -f "$d/deploy.yaml" ] || continue
-          S+=("$(yq e '.service'  $d/deploy.yaml)")
-          C+=("$(yq e '.compose'  $d/deploy.yaml)")
-        done
-        echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
-        echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
+        mkdir -p ~/.ssh
+        echo "$SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+        echo "Пробуем подключиться к $SSH_USER@$SSH_HOST ..."
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "echo ✅ УСПЕШНО: подключение работает"
+        - id: cfg
+          name: Read deploy.yaml
+          run: |
+            pip install -q yq
+            S=() C=()
+            for d in ${{ steps.folders.outputs.list }}; do
+              [ -f "$d/deploy.yaml" ] || continue
+              S+=("$(yq e '.service'  $d/deploy.yaml)")
+              C+=("$(yq e '.compose'  $d/deploy.yaml)")
+            done
+            echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
+            echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
 
     #------------------------------------------------------------------#
     # 4. деплой только изменённых сервисов
