@@ -1,6 +1,6 @@
 # CI/CD instruction
 
-## Project structe
+## Project structure
 
 ### Check example before start [test](https://github.com/GoatsTEAM/backend/tree/main/test)
 
