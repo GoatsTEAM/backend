@@ -1,4 +1,5 @@
 name: Deploy changed services
+
 on:
   push:
     branches: [ main ]
@@ -8,84 +9,76 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    #------------------------------------------------------------------#
-    # 1. клонируем репозиторий
-    #------------------------------------------------------------------#
-    - uses: actions/checkout@v3
-      with: { fetch-depth: 0 }
+      # 1 - клонируем репозиторий (полная история нужна для diff)
+      - uses: actions/checkout@v3
+        with: { fetch-depth: 0 }
 
-#------------------------------------------------------------------#
-# 2. какие верхние папки изменились                                 #
-#------------------------------------------------------------------#
-    - id: folders
-      name: Detect folders
-      run: |
-        diff_files=$(git diff --name-only \
-                    ${{ github.event.before }} \
-                    ${{ github.sha }})
-        echo "diff_files<<EOF" >>"$GITHUB_OUTPUT"
-        echo "$diff_files"     >>"$GITHUB_OUTPUT"
-        echo "EOF"             >>"$GITHUB_OUTPUT"
+      # 2 - список верхних папок, где есть изменения
+      - id: detect
+        name: Detect changed folders
+        run: |
+          diff_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "diff_files<<EOF" >>"$GITHUB_OUTPUT"
+          echo "$diff_files"     >>"$GITHUB_OUTPUT"
+          echo "EOF"             >>"$GITHUB_OUTPUT"
 
-        folders=$(echo "$diff_files" \
-                | cut -d/ -f1 | sort -u | tr '\n' ' ')
-        echo "list=$folders"   >>"$GITHUB_OUTPUT"
+          folders=$(echo "$diff_files" \
+            | cut -d/ -f1 | sort -u | tr '\n' ' ')
+          echo "folders=$folders" >>"$GITHUB_OUTPUT"
 
-        #------------------------------------------------------------------#
-        # 3. читаем deploy.yaml в изменённых папках
-        #------------------------------------------------------------------#
-    - id: cfg
-      name: Read deploy.yaml
-      run: |
-        pip install -q yq
-        S=() C=()
-        for d in ${{ steps.folders.outputs.list }}; do
-          [ -f "$d/deploy.yaml" ] || continue
-          svc=$(yq e '.service' "$d/deploy.yaml")
-          cmp=$(yq e '.compose' "$d/deploy.yaml")
-          S+=("$svc")
-          C+=("$cmp")
-        done
-        echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
-        echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
+      # 3 - читаем deploy.yaml в этих папках
+      - id: cfg
+        name: Read deploy.yaml
+        run: |
+          wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x /usr/bin/yq
+          S=(); C=()
+          for d in ${{ steps.detect.outputs.folders }}; do
+            [ -f "$d/deploy.yaml" ] || continue
+            S+=("$(yq e '.service'  "$d/deploy.yaml")")
+            C+=("$(yq e '.compose'  "$d/deploy.yaml")")
+          done
+          echo "services=${S[*]}" >>"$GITHUB_OUTPUT"
+          echo "composes=${C[*]}" >>"$GITHUB_OUTPUT"
 
-    # ---------- DEBUG: какие сервисы пойдут в деплой ----------
-    - name: 🔍 Debug services to deploy
-      run: |
-        echo "Services:  ${{ steps.cfg.outputs.svc }}"
-        echo "Composes:  ${{ steps.cfg.outputs.cmp }}"
+      # 4 - отладка: что нашли
+      - name: Debug
+        run: |
+          echo "Services:  ${{ steps.cfg.outputs.services }}"
+          echo "Composes:  ${{ steps.cfg.outputs.composes }}"
 
-    #------------------------------------------------------------------#
-    # 4. проверка SSH и деплой
-    #------------------------------------------------------------------#
-    - name: Deploy
-      if: ${{ steps.cfg.outputs.svc != '' }}
-      env:
-        SVC:      ${{ steps.cfg.outputs.svc }}
-        CMP:      ${{ steps.cfg.outputs.cmp }}
-        SSH_KEY:  ${{ secrets.ssh_key }}
-        SSH_HOST: ${{ secrets.server_ip }}
-        SSH_USER: ${{ secrets.deploy_user }}
-      run: |
-        mkdir -p ~/.ssh
-        printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+      # 5 - SSH-деплой без here-doc
+      - name: Deploy
+        if: steps.cfg.outputs.services != ''
+        env:
+          SSH_KEY:   ${{ secrets.ssh_key }}
+          SSH_HOST:  ${{ secrets.server_ip }}
+          SSH_USER:  ${{ secrets.deploy_user }}
+          SERVICES:  ${{ steps.cfg.outputs.services }}
+          COMPOSES:  ${{ steps.cfg.outputs.composes }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-        read -ra services <<<"$SVC"
-        read -ra composes <<<"$CMP"
+          IFS=' ' read -ra svcs <<<"$SERVICES"
+          IFS=' ' read -ra cmps <<<"$COMPOSES"
 
-        for i in "${!services[@]}"; do
-          svc=${services[$i]}
-          dir=${composes[$i]}
-          echo "🚀  $svc   (compose dir: $dir)"
+          for i in "${!svcs[@]}"; do
+            svc=${svcs[$i]}
+            dir=${cmps[$i]}
+            echo "🚀 Deploying '$svc' (compose dir: $dir)"
 
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-              "$SSH_USER@$SSH_HOST" "
-            cd '$dir' &&
-            docker compose config --services | grep -qx '$svc' &&
-            docker compose build '$svc' &&
-            docker compose up -d '$svc' ||
-            echo '⚠  $svc not found in compose — skipped'
-          "
-        done
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+              cd '$dir'
+              if docker compose config --services | grep -qx '$svc'; then
+                echo '• building $svc'
+                docker compose build '$svc'
+                echo '• restarting $svc'
+                docker compose up -d '$svc'
+              else
+                echo '⚠ $svc not found in compose — skipped'
+              fi
+            "
+          done
