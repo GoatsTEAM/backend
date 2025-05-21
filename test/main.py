@@ -20,4 +20,4 @@ def read_test():
 
 @app.get("/app")
 def read_app():
-    return {"message": "Hello, App!"}
+    return {"message": "Hello, Lox!"}
