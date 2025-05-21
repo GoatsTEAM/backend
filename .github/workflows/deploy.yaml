@@ -28,15 +28,15 @@ jobs:
 
       # 3 - читаем deploy.yaml в этих папках
       - id: cfg
-        name: Read deploy.yaml
+        name: Read deploy.yaml configs
         run: |
-          wget -qO /usr/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          chmod +x /usr/bin/yq
+          wget -qO ./yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x ./yq
           S=(); C=()
           for d in ${{ steps.detect.outputs.folders }}; do
             [ -f "$d/deploy.yaml" ] || continue
-            S+=("$(yq e '.service'  "$d/deploy.yaml")")
-            C+=("$(yq e '.compose'  "$d/deploy.yaml")")
+            S+=("$(./yq e '.service'  "$d/deploy.yaml")")
+            C+=("$(./yq e '.compose' "$d/deploy.yaml")")
           done
           echo "services=${S[*]}" >>"$GITHUB_OUTPUT"
           echo "composes=${C[*]}" >>"$GITHUB_OUTPUT"
