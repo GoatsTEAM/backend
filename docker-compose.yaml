@@ -27,8 +27,8 @@ services:
 #  ▸ build.context указывает на исходники после git pull                    #
 ##############################################################################
 
-  auth:                       # ← имя = service: auth
-    build: ./auth             #   путь к Dockerfile внутри репозитория
+  test:                       # ← имя = service: auth
+    build: ./test             #   путь к Dockerfile внутри репозитория
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
