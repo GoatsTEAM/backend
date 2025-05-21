@@ -38,7 +38,7 @@ compose: /home/deploy/backend
 ```
 
 
-### Ad it to docker-compose.yaml "like [test_2](https://github.com/GoatsTEAM/backend/blob/main/docker-compose.yaml)"
+### Add it to docker-compose.yaml "like [test_2](https://github.com/GoatsTEAM/backend/blob/main/docker-compose.yaml)"
 
 ```
   <service_name>:
