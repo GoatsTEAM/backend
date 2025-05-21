@@ -11,7 +11,7 @@ backend
     .github/workflows
     <service_name>
         ...
-        apps
+        app
         ...
         Dokerfile -- must be
         deploy.yaml -- must be
