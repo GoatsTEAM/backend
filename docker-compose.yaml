@@ -54,6 +54,17 @@ services:
       - "traefik.http.routers.test_2.middlewares=test_2-strip"
     networks: [proxy]
 
+  test_3:
+    build: ./test_3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.test_3.rule=PathPrefix(`/test_3`)"
+      - "traefik.http.routers.test_3.entrypoints=web"
+      - "traefik.http.services.test_3.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.test_3-strip.stripprefix.prefixes=/test_3"
+      - "traefik.http.routers.test_3.middlewares=test_3-strip"
+    networks: [proxy]
+
 ##############################################################################
 networks:
   proxy:

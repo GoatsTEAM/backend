@@ -1,0 +1,2 @@
+service: test_3
+compose: /home/deploy/backend
