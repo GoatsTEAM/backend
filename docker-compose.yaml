@@ -3,6 +3,7 @@ version: "3.9"
 ##############################################################################
 #                          REVERSE-PROXY (Traefik)                           #
 ##############################################################################
+######################### DONT TOUCH #########################################
 services:
   traefik:
     image: traefik:v2.10
@@ -19,13 +20,14 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks: [proxy]
-
+######################### DONT TOUCH #########################################
 ##############################################################################
 #                              MICROSERVICES                                #
 #  ▸ каждый блок <имя-сервиса> совпадает с папкой монорепо и service: в     #
 #    <папка>/deploy.yml                                                     #
 #  ▸ build.context указывает на исходники после git pull                    #
 ##############################################################################
+######################### DONT TOUCH #########################################
 
   test:
     build: ./test
@@ -37,16 +39,19 @@ services:
       - "traefik.http.middlewares.test-strip.stripprefix.prefixes=/test"
       - "traefik.http.routers.test.middlewares=test-strip"
     networks: [proxy]
-  
+
+######################### DONT TOUCH #########################################
+##############################################################################
+
   test_2:
     build: ./test_2
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.test.rule=PathPrefix(`/test_2`)"
-      - "traefik.http.routers.test.entrypoints=web"
-      - "traefik.http.services.test.loadbalancer.server.port=79"
-      - "traefik.http.middlewares.test-strip.stripprefix.prefixes=/test_2"
-      - "traefik.http.routers.test.middlewares=test-strip"
+      - "traefik.http.routers.test_2.rule=PathPrefix(`/test_2`)"
+      - "traefik.http.routers.test_2.entrypoints=web"
+      - "traefik.http.services.test_2.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.test_2-strip.stripprefix.prefixes=/test_2"
+      - "traefik.http.routers.test_2.middlewares=test_2-strip"
     networks: [proxy]
 
 ##############################################################################
