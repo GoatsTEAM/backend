@@ -48,3 +48,16 @@ jobs:
             docker rm -f service2 || true
             docker run -d --name service2 -p 8001:8000 service2
           EOF
+          
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Запускаем ssh-agent и добавляем наш ключ
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
+
+          # Сохраняем fingerprint сервера, чтобы не задавался вопрос
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
