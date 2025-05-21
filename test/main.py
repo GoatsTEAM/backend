@@ -10,7 +10,8 @@ def read_root():
     return {"message": "Hello, world!"}
 
 
-
+def aaa():
+    pass
 
 @app.get("/test")
 def read_test():
