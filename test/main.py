@@ -9,10 +9,6 @@ Instrumentator().instrument(app).expose(app)
 def read_root():
     return {"message": "Hello, world!"}
 
-
-def aaa():
-    pass
-
 @app.get("/tester")
 def read_root():
     return {"message": "Hello, Tiny!"}
