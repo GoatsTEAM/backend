@@ -1,39 +1,49 @@
-name: CI/CD Deploy
+name: Deploy FastAPI
 
-# Триггер — пуш в ветку main
 on:
   push:
-    branches:
-      - main
+    branches: [ master ]        # срабатывает на push/merge в master
+
+env:
+  REMOTE_DIR: /home/${{ secrets.DEPLOY_USER }}/projects/fastapi   # куда кладём код на сервере
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
-      - name: Checkout code
-        uses: actions/checkout@v3
+    # 1. Забираем репозиторий
+    - uses: actions/checkout@v3
 
-      # 2) Setup SSH
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+    # 2. Поднимаем SSH-ключ
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
-          # Запускаем ssh-agent и подключаем ключ
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_rsa
+    # 3. Синхронизируем код на сервер (быстрее и чище, чем git pull на проде)
+    - name: Sync project to server
+      run: |
+        rsync -az --delete \
+          -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+          ./ ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }}:${{ env.REMOTE_DIR }}
 
-          # Добавляем сервер в known_hosts, чтобы избежать подтверждения
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+    # 4. Собираем и перезапускаем контейнер
+    - name: Deploy with Docker Compose
+      run: |
+        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+          ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          set -e
+          cd $REMOTE_DIR
 
-      # 3) Тест SSH-подключения
-      - name: Test SSH connection
-        run: |
-          ssh -i ~/.ssh/id_rsa \
-              -o StrictHostKeyChecking=no \
-              -o BatchMode=yes \
-              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} \
-              'echo SSH_OK'
+          # гарантия, что внешняя сеть monitoring существует
+          docker network create monitoring || true
+
+          # строим и поднимаем (или обновляем) сервис
+          docker compose up -d --build
+
+          # подчистим висевшие образы
+          docker image prune -f
+        EOF
