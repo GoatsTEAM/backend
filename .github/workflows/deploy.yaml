@@ -9,37 +9,36 @@ jobs:
 
     steps:
     #------------------------------------------------------------------#
-    # 1. берём код
+    # 1. клонируем репозиторий
     #------------------------------------------------------------------#
     - uses: actions/checkout@v3
       with: { fetch-depth: 0 }
 
     #------------------------------------------------------------------#
-    # 2. какие верхние папки изменились
+    # 2. какие верхние папки изменились (merge-base → HEAD)
     #------------------------------------------------------------------#
     - id: folders
       name: Detect folders
       run: |
-        base="$(git merge-base HEAD origin/main)"
-        echo "list=$(git diff --name-only $base..HEAD \
-                 | cut -d/ -f1 | sort -u | tr '\n' ' ')" >>"$GITHUB_OUTPUT"
+        base=$(git merge-base HEAD origin/main)
+        diff_files=$(git diff --name-only "$base" HEAD)
+        echo "diff_files<<EOF"       >>"$GITHUB_OUTPUT"
+        echo "$diff_files"           >>"$GITHUB_OUTPUT"
+        echo "EOF"                   >>"$GITHUB_OUTPUT"
 
-    #------------------------------------------------------------------#
-    # 3. собираем service/compose из deploy.yaml
-    #------------------------------------------------------------------#
-    - name: 🔍 Проверка SSH-соединения
-      env:
-        SSH_KEY:   ${{ secrets.ssh_key }}
-        SSH_USER:  ${{ secrets.deploy_user }}
-        SSH_HOST:  ${{ secrets.server_ip }}
+        folders=$(echo "$diff_files" \
+                 | cut -d/ -f1 | sort -u | tr '\n' ' ')
+        echo "list=$folders"         >>"$GITHUB_OUTPUT"
+
+    # ---------- DEBUG: показываем diff ----------
+    - name: 🔍 Debug diff
       run: |
-        mkdir -p ~/.ssh
-        echo "$SSH_KEY" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+        echo "Изменённые файлы:"
+        echo "${{ steps.folders.outputs.diff_files }}"
 
-        echo "Пробуем подключиться к $SSH_USER@$SSH_HOST ..."
-        ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "echo ✅ УСПЕШНО: подключение работает"
+    #------------------------------------------------------------------#
+    # 3. читаем deploy.yaml в изменённых папках
+    #------------------------------------------------------------------#
     - id: cfg
       name: Read deploy.yaml
       run: |
@@ -47,14 +46,20 @@ jobs:
         S=() C=()
         for d in ${{ steps.folders.outputs.list }}; do
           [ -f "$d/deploy.yaml" ] || continue
-          S+=("$(yq e '.service'  $d/deploy.yaml)")
-          C+=("$(yq e '.compose'  $d/deploy.yaml)")
+          S+=("$(yq e '.service'  "$d/deploy.yaml")")
+          C+=("$(yq e '.compose'  "$d/deploy.yaml")")
         done
         echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
         echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
 
+    # ---------- DEBUG: какие сервисы пойдут в деплой ----------
+    - name: 🔍 Debug services to deploy
+      run: |
+        echo "Services:  ${{ steps.cfg.outputs.svc }}"
+        echo "Composes:  ${{ steps.cfg.outputs.cmp }}"
+
     #------------------------------------------------------------------#
-    # 4. деплой только изменённых сервисов
+    # 4. проверка SSH и деплой
     #------------------------------------------------------------------#
     - name: Deploy
       if: ${{ steps.cfg.outputs.svc != '' }}
@@ -71,19 +76,19 @@ jobs:
         ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
         read -ra services <<<"$SVC"
-        read -ra composes  <<<"$CMP"
+        read -ra composes <<<"$CMP"
 
         for i in "${!services[@]}"; do
           svc=${services[$i]}
           dir=${composes[$i]}
-          echo "🚀  $svc   (dir: $dir)"
+          echo "🚀  $svc   (compose dir: $dir)"
 
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
               "$SSH_USER@$SSH_HOST" "
             cd '$dir' &&
             docker compose config --services | grep -qx '$svc' &&
             docker compose build '$svc' &&
-            docker compose up -d  '$svc' ||
+            docker compose up -d '$svc' ||
             echo '⚠  $svc not found in compose — skipped'
           "
         done
