@@ -1,95 +1,76 @@
 name: Deploy changed services
-
 on:
   push:
-    branches: [ main ]         # пуш и merge-commit в main
-  pull_request:
-    branches: [ main ]         # опционально: развёртывать после merge PR
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-    ##########################################################################
-    # 1. Клонируем репозиторий
-    ##########################################################################
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0         # нужен весь git-лог для diff
+    #------------------------------------------------------------------#
+    # 1. берём код
+    #------------------------------------------------------------------#
+    - uses: actions/checkout@v3
+      with: { fetch-depth: 0 }
 
-    ##########################################################################
-    # 2. Выясняем, какие папки верхнего уровня затронуты этим push / PR
-    ##########################################################################
-    - name: Detect changed folders
-      id: folders
+    #------------------------------------------------------------------#
+    # 2. какие верхние папки изменились
+    #------------------------------------------------------------------#
+    - id: folders
+      name: Detect folders
       run: |
-        # диапазон diff: предыдущий коммит → нынешний HEAD
-        range="$(git merge-base HEAD origin/main)..HEAD"
-        folders=$(git diff --name-only $range \
-                 | cut -d/ -f1 \
-                 | sort -u \
-                 | tr '\n' ' ')
-        echo "folders=$folders" >>"$GITHUB_OUTPUT"
+        base="$(git merge-base HEAD origin/main)"
+        echo "list=$(git diff --name-only $base..HEAD \
+                 | cut -d/ -f1 | sort -u | tr '\n' ' ')" >>"$GITHUB_OUTPUT"
 
-    ##########################################################################
-    # 3. Читаем deploy.yaml внутри каждой изменённой папки
-    ##########################################################################
-    - name: Collect deploy configs
-      id: cfg
+    #------------------------------------------------------------------#
+    # 3. собираем service/compose из deploy.yaml
+    #------------------------------------------------------------------#
+    - id: cfg
+      name: Read deploy.yaml
       run: |
-        pip install -q yq                              # лёгкий YAML-парсер
-        services=() ; composes=()
-        for dir in ${{ steps.folders.outputs.folders }}; do
-          cfg="$dir/deploy.yaml"
-          [[ -f "$cfg" ]] || continue
-          svc=$(yq e '.service'  "$cfg")
-          cmp=$(yq e '.compose'  "$cfg")
-          services+=("$svc")
-          composes+=("$cmp")
-          echo "🛈  $dir → service=$svc  compose=$cmp"
+        pip install -q yq
+        S=() C=()
+        for d in ${{ steps.folders.outputs.list }}; do
+          [ -f "$d/deploy.yaml" ] || continue
+          S+=("$(yq e '.service'  $d/deploy.yaml)")
+          C+=("$(yq e '.compose'  $d/deploy.yaml)")
         done
-        echo "services=${services[*]}"  >>"$GITHUB_OUTPUT"
-        echo "composes=${composes[*]}"  >>"$GITHUB_OUTPUT"
+        echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
+        echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
 
-    ##########################################################################
-    # 4. Подключаемся к серверу и перезапускаем ТОЛЬКО изменившиеся сервисы
-    ##########################################################################
-    - name: Deploy via SSH
-      if: ${{ steps.cfg.outputs.services != '' }}
+    #------------------------------------------------------------------#
+    # 4. деплой только изменённых сервисов
+    #------------------------------------------------------------------#
+    - name: Deploy
+      if: ${{ steps.cfg.outputs.svc != '' }}
       env:
-        SSH_KEY:   ${{ secrets.ssh_key }}
-        SSH_USER:  ${{ secrets.deploy_user }}
-        SSH_HOST:  ${{ secrets.server_ip }}
-        SERVICES:  ${{ steps.cfg.outputs.services }}
-        COMPOSES:  ${{ steps.cfg.outputs.composes }}
+        SVC:      ${{ steps.cfg.outputs.svc }}
+        CMP:      ${{ steps.cfg.outputs.cmp }}
+        SSH_KEY:  ${{ secrets.ssh_key }}
+        SSH_HOST: ${{ secrets.server_ip }}
+        SSH_USER: ${{ secrets.deploy_user }}
       run: |
-        # ---------- готовим SSH ----------
-        install -m 600 /dev/null ~/.ssh/id_rsa
-        echo "$SSH_KEY" > ~/.ssh/id_rsa
+        mkdir -p ~/.ssh
+        printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
         ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
-        # ---------- цикл по сервисам ----------
-        idx=1
-        for svc in $SERVICES; do
-          cmp=$(echo "$COMPOSES" | cut -d' ' -f $idx)
-          echo "🚀  Deploying $svc  (compose dir: $cmp)"
+        read -ra services <<<"$SVC"
+        read -ra composes  <<<"$CMP"
 
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" bash -s <<'EOSSH'
-svc="$1" ; cmp="$2"
-set -e
-cd "$cmp"
+        for i in "${!services[@]}"; do
+          svc=${services[$i]}
+          dir=${composes[$i]}
+          echo "🚀  $svc   (dir: $dir)"
 
-if docker compose config --services | grep -qx "$svc"; then
-  echo "• build $svc"
-  docker compose build "$svc"
-  echo "• up -d $svc"
-  docker compose up -d "$svc"
-else
-  echo "⚠  Service '$svc' отсутствует в docker-compose.yml — пропущен."
-fi
-EOSSH "$svc" "$cmp"
-
-          idx=$((idx+1))
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+              "$SSH_USER@$SSH_HOST" "
+            cd '$dir' &&
+            docker compose config --services | grep -qx '$svc' &&
+            docker compose build '$svc' &&
+            docker compose up -d  '$svc' ||
+            echo '⚠  $svc not found in compose — skipped'
+          "
         done
