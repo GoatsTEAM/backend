@@ -13,6 +13,6 @@ def read_root():
 def aaa():
     pass
 
-@app.get("/test")
-def read_test():
-    return {"message": "Test!"}
+@app.get("/tester")
+def read_root():
+    return {"message": "Hello, Tiny!"}
