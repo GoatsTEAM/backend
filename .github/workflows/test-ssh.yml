@@ -51,6 +51,7 @@ jobs:
             docker-compose up -d --build
           EOF
 
+
       # 5) Деплой service2
       - name: Deploy service2
         run: |
