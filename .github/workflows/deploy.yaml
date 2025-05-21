@@ -34,18 +34,18 @@ jobs:
         #------------------------------------------------------------------#
         # 3. читаем deploy.yaml в изменённых папках
         #------------------------------------------------------------------#
-        - id: cfg
-          name: Read deploy.yaml
-          run: |
-            pip install -q yq
-            S=() C=()
-            for d in ${{ steps.folders.outputs.list }}; do
-              [ -f "$d/deploy.yaml" ] || continue
-              S+=("$(yq e '.service'  "$d/deploy.yaml")")
-              C+=("$(yq e '.compose'  "$d/deploy.yaml")")
-            done
-            echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
-            echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
+    - id: cfg
+      name: Read deploy.yaml
+      run: |
+        pip install -q yq
+        S=() C=()
+        for d in ${{ steps.folders.outputs.list }}; do
+          [ -f "$d/deploy.yaml" ] || continue
+          S+=("$(yq e '.service'  "$d/deploy.yaml")")
+          C+=("$(yq e '.compose'  "$d/deploy.yaml")")
+        done
+        echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
+        echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
 
     # ---------- DEBUG: какие сервисы пойдут в деплой ----------
     - name: 🔍 Debug services to deploy
