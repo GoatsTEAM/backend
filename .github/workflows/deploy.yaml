@@ -14,43 +14,38 @@ jobs:
     - uses: actions/checkout@v3
       with: { fetch-depth: 0 }
 
-    #------------------------------------------------------------------#
-    # 2. какие верхние папки изменились (merge-base → HEAD)
-    #------------------------------------------------------------------#
+#------------------------------------------------------------------#
+# 2. какие верхние папки изменились                                 #
+#------------------------------------------------------------------#
     - id: folders
       name: Detect folders
       run: |
-        base=$(git merge-base HEAD origin/main)
-        diff_files=$(git diff --name-only "$base" HEAD)
-        echo "diff_files<<EOF"       >>"$GITHUB_OUTPUT"
-        echo "$diff_files"           >>"$GITHUB_OUTPUT"
-        echo "EOF"                   >>"$GITHUB_OUTPUT"
+        diff_files=$(git diff --name-only \
+                    ${{ github.event.before }} \
+                    ${{ github.sha }})
+        echo "diff_files<<EOF" >>"$GITHUB_OUTPUT"
+        echo "$diff_files"     >>"$GITHUB_OUTPUT"
+        echo "EOF"             >>"$GITHUB_OUTPUT"
 
         folders=$(echo "$diff_files" \
-                 | cut -d/ -f1 | sort -u | tr '\n' ' ')
-        echo "list=$folders"         >>"$GITHUB_OUTPUT"
+                | cut -d/ -f1 | sort -u | tr '\n' ' ')
+        echo "list=$folders"   >>"$GITHUB_OUTPUT"
 
-    # ---------- DEBUG: показываем diff ----------
-    - name: 🔍 Debug diff
-      run: |
-        echo "Изменённые файлы:"
-        echo "${{ steps.folders.outputs.diff_files }}"
-
-    #------------------------------------------------------------------#
-    # 3. читаем deploy.yaml в изменённых папках
-    #------------------------------------------------------------------#
-    - id: cfg
-      name: Read deploy.yaml
-      run: |
-        pip install -q yq
-        S=() C=()
-        for d in ${{ steps.folders.outputs.list }}; do
-          [ -f "$d/deploy.yaml" ] || continue
-          S+=("$(yq e '.service'  "$d/deploy.yaml")")
-          C+=("$(yq e '.compose'  "$d/deploy.yaml")")
-        done
-        echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
-        echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
+        #------------------------------------------------------------------#
+        # 3. читаем deploy.yaml в изменённых папках
+        #------------------------------------------------------------------#
+        - id: cfg
+          name: Read deploy.yaml
+          run: |
+            pip install -q yq
+            S=() C=()
+            for d in ${{ steps.folders.outputs.list }}; do
+              [ -f "$d/deploy.yaml" ] || continue
+              S+=("$(yq e '.service'  "$d/deploy.yaml")")
+              C+=("$(yq e '.compose'  "$d/deploy.yaml")")
+            done
+            echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
+            echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
 
     # ---------- DEBUG: какие сервисы пойдут в деплой ----------
     - name: 🔍 Debug services to deploy
