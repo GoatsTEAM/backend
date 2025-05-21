@@ -16,3 +16,8 @@ def read_item(item_id: int, q: str = None):
 @app.get("/tester")
 def read_test():
     return {"message": "Hello, Tiny!"}
+
+
+@app.get("/ede")
+def read_test():
+    return {"message": "Hello, Tiny!"}
