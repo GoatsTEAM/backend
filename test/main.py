@@ -21,3 +21,8 @@ def read_test():
 @app.get("/app")
 def read_app():
     return {"message": "Hello, Lox!"}
+
+
+@app.get("/ton")
+def read_app():
+    return {"message": "Hello, Lox!"}
