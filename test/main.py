@@ -8,3 +8,8 @@ Instrumentator().instrument(app).expose(app)
 @app.get("/")
 def read_root():
     return {"message": "Hello, world!"}
+
+
+@app.get("/")
+def read_root():
+    return {"message": "Test!"}
