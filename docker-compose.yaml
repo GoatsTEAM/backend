@@ -1,0 +1,44 @@
+version: "3.9"
+
+##############################################################################
+#                          REVERSE-PROXY (Traefik)                           #
+##############################################################################
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    command:
+      - "--entrypoints.web.address=:80"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--api.dashboard=true"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"     # внешний HTTP
+      - "8080:8080" # dashboard  http://<host>:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [proxy]
+
+##############################################################################
+#                              MICROSERVICES                                #
+#  ▸ каждый блок <имя-сервиса> совпадает с папкой монорепо и service: в     #
+#    <папка>/deploy.yml                                                     #
+#  ▸ build.context указывает на исходники после git pull                    #
+##############################################################################
+
+  auth:                       # ← имя = service: auth
+    build: ./auth             #   путь к Dockerfile внутри репозитория
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.auth-strip.stripprefix.prefixes=/auth"
+      - "traefik.http.routers.auth.middlewares=auth-strip"
+    networks: [proxy]
+
+##############################################################################
+networks:
+  proxy:
+    driver: bridge

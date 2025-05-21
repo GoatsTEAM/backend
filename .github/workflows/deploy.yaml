@@ -10,55 +10,56 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    # ---------- какие папки изменились ----------
-    - name: Detect changed folders
+    # ---------------- 1. какие папки изменились ----------------
+    - name: Detect folders
       id: detect
       run: |
         git fetch origin main
-        echo "folders=$(git diff --name-only HEAD^ HEAD | cut -d/ -f1 | sort -u | tr '\n' ' ')" >> $GITHUB_OUTPUT
+        echo "folders=$(git diff --name-only HEAD^ HEAD | cut -d/ -f1 | sort -u | tr '\n' ' ')" >>$GITHUB_OUTPUT
 
-    # ---------- читаем deploy.yml каждой изменённой папки ----------
-    - name: Collect deploy configs
-      id: cfg
+    # ---------------- 2. читаем deploy.yml каждой папки --------
+    - name: Collect service configs
+      id: collect
       run: |
-        pip install yq >/dev/null           # yaml-parser
-        svcs=()
-        comps=()
+        pip install yq >/dev/null
+        services=()
+        composes=()
         for dir in ${{ steps.detect.outputs.folders }}; do
           if [[ -f "$dir/deploy.yml" ]]; then
             svc=$(yq '.service' "$dir/deploy.yml")
             cmp=$(yq '.compose' "$dir/deploy.yml")
-            svcs+=("$svc")
-            comps+=("$cmp")
-            echo "Will deploy $svc (compose=$cmp)"
+            services+=("$svc")
+            composes+=("$cmp")
           fi
         done
-        echo "services=${svcs[*]}"  >> $GITHUB_OUTPUT
-        echo "composes=${comps[*]}" >> $GITHUB_OUTPUT
+        echo "services=${services[*]}"  >>$GITHUB_OUTPUT
+        echo "composes=${composes[*]}"  >>$GITHUB_OUTPUT
 
-    # ---------- SSH и деплой ----------
-    - name: Deploy each service
+    # ---------------- 3. SSH и выборочный деплой ---------------
+    - name: Deploy
       env:
-        SERVICES: ${{ steps.cfg.outputs.services }}
-        COMPOSES: ${{ steps.cfg.outputs.composes }}
+        SERVICES: ${{ steps.collect.outputs.services }}
+        COMPOSES: ${{ steps.collect.outputs.composes }}
       run: |
         mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+        echo "${{ secrets.ssh_key }}" > ~/.ssh/id_rsa
         chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+        ssh-keyscan -H ${{ secrets.server_ip }} >> ~/.ssh/known_hosts
 
-        # --- цикл по сервисам ---
         i=0
         for svc in $SERVICES; do
           cmp=$(echo $COMPOSES | cut -d' ' -f $((i+1)))
-          echo "::group::Deploy $svc (compose file in $cmp)"
+          echo "→ $svc   (compose=$cmp)"
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
-              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} << EOF
+              ${{ secrets.deploy_user }}@${{ secrets.server_ip }} << EOF
             set -e
             cd $cmp
-            docker compose build $svc
-            docker compose up -d   $svc
+            if docker compose config --services | grep -qw "$svc"; then
+              docker compose build $svc
+              docker compose up -d $svc
+            else
+              echo "Service '$svc' not found in compose — skipped."
+            fi
           EOF
-          echo "::endgroup::"
           i=$((i+1))
         done
