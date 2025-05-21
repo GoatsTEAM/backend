@@ -33,7 +33,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.test.rule=PathPrefix(`/test`)"
       - "traefik.http.routers.test.entrypoints=web"
-      - "traefik.http.services.test.loadbalancer.server.port=8000"
+      - "traefik.http.services.test.loadbalancer.server.port=80"
       - "traefik.http.middlewares.test-strip.stripprefix.prefixes=/test"
       - "traefik.http.routers.test.middlewares=test-strip"
     networks: [proxy]
