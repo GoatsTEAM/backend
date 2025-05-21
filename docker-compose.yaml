@@ -27,15 +27,15 @@ services:
 #  ▸ build.context указывает на исходники после git pull                    #
 ##############################################################################
 
-  test:                       # ← имя = service: auth
-    build: ./test             #   путь к Dockerfile внутри репозитория
+  test:
+    build: ./test
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
-      - "traefik.http.routers.auth.entrypoints=web"
-      - "traefik.http.services.auth.loadbalancer.server.port=80"
-      - "traefik.http.middlewares.auth-strip.stripprefix.prefixes=/auth"
-      - "traefik.http.routers.auth.middlewares=auth-strip"
+      - "traefik.http.routers.test.rule=PathPrefix(`/test`)"
+      - "traefik.http.routers.test.entrypoints=web"
+      - "traefik.http.services.test.loadbalancer.server.port=8000"
+      - "traefik.http.middlewares.test-strip.stripprefix.prefixes=/test"
+      - "traefik.http.routers.test.middlewares=test-strip"
     networks: [proxy]
 
 ##############################################################################
