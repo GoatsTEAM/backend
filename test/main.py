@@ -13,9 +13,6 @@ def read_root():
 def aaa():
     pass
 
-def bbb():
-    pass
-
 @app.get("/tester")
 def read_root():
     return {"message": "Hello, Tiny!"}
