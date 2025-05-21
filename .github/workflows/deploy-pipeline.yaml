@@ -61,13 +61,14 @@ jobs:
             ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
                 "$DEPLOY_USER@$SERVER_IP" bash -s <<EOF
 cd "$cmp"
-if docker compose config --services | grep -q "^$svc\$"; then
-  echo "✅ Building and restarting service '$svc'..."
-  docker compose build "$svc"
-  docker compose up -d "$svc"
+if docker compose config --services | grep -q "^\${svc}\$"; then
+  echo "✅ Building and restarting service '\${svc}'..."
+  docker compose build "\${svc}"
+  docker compose up -d "\${svc}"
 else
-  echo "⚠️  Service '$svc' not defined in compose — skipping."
+  echo "⚠️  Service '\${svc}' not defined in compose — skipping."
 fi
 EOF
+
             i=$((i + 1))
           done
