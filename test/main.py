@@ -19,5 +19,5 @@ def read_test():
 
 
 @app.get("/app")
-def read_test():
+def read_app():
     return {"message": "Hello, App!"}
