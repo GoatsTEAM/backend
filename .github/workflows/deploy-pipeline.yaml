@@ -1,0 +1,73 @@
+name: Deploy Changed Services
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Detect changed folders
+        id: detect
+        run: |
+          git fetch origin main
+          folders=$(git diff --name-only HEAD^ HEAD \
+            | cut -d/ -f1 \
+            | sort -u \
+            | tr '\n' ' ')
+          echo "folders=$folders" >> $GITHUB_OUTPUT
+
+      - name: Collect service configs
+        id: collect
+        run: |
+          pip install yq > /dev/null
+          services=()
+          composes=()
+          for dir in ${{ steps.detect.outputs.folders }}; do
+            if [[ -f "$dir/deploy.yml" ]]; then
+              svc=$(yq e '.service' "$dir/deploy.yml")
+              cmp=$(yq e '.compose' "$dir/deploy.yml")
+              services+=("$svc")
+              composes+=("$cmp")
+            fi
+          done
+          echo "services=${services[*]}"  >> $GITHUB_OUTPUT
+          echo "composes=${composes[*]}" >> $GITHUB_OUTPUT
+
+      - name: Deploy changed services via SSH
+        env:
+          SSH_KEY:      ${{ secrets.ssh_key }}
+          SERVER_IP:    ${{ secrets.server_ip }}
+          DEPLOY_USER:  ${{ secrets.deploy_user }}
+          SERVICES:     ${{ steps.collect.outputs.services }}
+          COMPOSES:     ${{ steps.collect.outputs.composes }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
+
+          i=1
+          for svc in $SERVICES; do
+            cmp=$(echo $COMPOSES | cut -d' ' -f $i)
+            echo "🔧 Deploying $svc from compose directory: $cmp"
+
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+                "$DEPLOY_USER@$SERVER_IP" bash -s <<EOF
+cd "$cmp"
+if docker compose config --services | grep -q "^$svc\$"; then
+  echo "✅ Building and restarting service '$svc'..."
+  docker compose build "$svc"
+  docker compose up -d "$svc"
+else
+  echo "⚠️  Service '$svc' not defined in compose — skipping."
+fi
+EOF
+            i=$((i + 1))
+          done
