@@ -1,6 +1,6 @@
 name: CI/CD Deploy
 
-# Триггер — пуш в ветку main (или master, если у тебя она так названа)
+# Триггер — пуш в ветку main
 on:
   push:
     branches:
@@ -11,53 +11,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Клонируем репозиторий
+      # 1) Checkout
       - name: Checkout code
         uses: actions/checkout@v3
 
-
-      # 2) Настраиваем SSH
-      - name: Setup SSH
+      # 2) Setup SSH
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
+          # Запускаем ssh-agent и подключаем ключ
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/id_rsa
+
+          # Добавляем сервер в known_hosts, чтобы избежать подтверждения
           ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
 
-      # 3) Деплой первого сервиса
+      # 3) Тест SSH-подключения
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/id_rsa \
+              -o StrictHostKeyChecking=no \
+              -o BatchMode=yes \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} \
+              'echo SSH_OK'
+
+      # 4) Деплой service1
       - name: Deploy service1
         run: |
-          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh -i ~/.ssh/id_rsa \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -e
             cd /home/${{ secrets.DEPLOY_USER }}/projects/repo/service1
             git pull origin main
-            # если используешь docker-compose:
             docker-compose down
             docker-compose up -d --build
           EOF
 
-      # 4) Деплой второго сервиса
+      # 5) Деплой service2
       - name: Deploy service2
         run: |
-          ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh -i ~/.ssh/id_rsa \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.DEPLOY_USER }}@${{ secrets.SERVER_IP }} << 'EOF'
             set -e
             cd /home/${{ secrets.DEPLOY_USER }}/projects/repo/service2
             git pull origin main
-            # если сервис — просто образ Docker:
             docker build -t service2 .
             docker rm -f service2 || true
             docker run -d --name service2 -p 8001:8000 service2
           EOF
-          
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-          # Запускаем ssh-agent и добавляем наш ключ
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/id_rsa
-
-          # Сохраняем fingerprint сервера, чтобы не задавался вопрос
-          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
