@@ -72,6 +72,7 @@ jobs:
 
             ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
               cd '$dir'
+              git pull --ff-only origin main
               if docker compose config --services | grep -qx '$svc'; then
                 echo '• building $svc'
                 docker compose build '$svc'
