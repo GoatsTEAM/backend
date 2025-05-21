@@ -5,7 +5,7 @@ on:
     branches: [ main ]        # срабатывает на push/merge в master
 
 env:
-  REMOTE_DIR: /home/${{ secrets.DEPLOY_USER }}/projects/fastapi   # куда кладём код на сервере
+  REMOTE_DIR: /home/${{ secrets.DEPLOY_USER }}/project/fastapi   # куда кладём код на сервере
 
 jobs:
   deploy:
