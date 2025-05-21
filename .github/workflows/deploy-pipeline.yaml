@@ -5,68 +5,83 @@ on:
     branches: [ main ]
 
 jobs:
-  deploy:
+  detect-changes:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      matrix-json: ${{ steps.matrix.outputs.json }}
 
     steps:
-    # 1. Клон репозитория
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    # 2. Папки верхнего уровня, где что-то поменялось
-    - name: Detect changed folders
-      id: folders
-      run: |
-        git fetch origin main
-        echo "list=$(git diff --name-only HEAD^ HEAD \
-                   | cut -d/ -f1 \
-                   | sort -u \
-                   | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+      - name: Detect changed folders
+        id: folders
+        run: |
+          folders=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+                     | cut -d/ -f1 \
+                     | sort -u \
+                     | tr '\n' ' ')
+          echo "list=$folders" >> "$GITHUB_OUTPUT"
 
-    # 3. Читаем deploy.yml каждой изменённой папки
-    - name: Collect deploy configs
-      id: cfg
-      run: |
-        pip install -q yq
-        svcs=() cmps=()
-        for dir in ${{ steps.folders.outputs.list }}; do
-          [ -f "$dir/deploy.yml" ] || continue
-          svcs+=("$(yq e '.service'  "$dir/deploy.yml")")
-          cmps+=("$(yq e '.compose' "$dir/deploy.yml")")
-        done
-        echo "services=${svcs[*]}"  >> "$GITHUB_OUTPUT"
-        echo "composes=${cmps[*]}"  >> "$GITHUB_OUTPUT"
+      - name: Collect deploy configs → matrix JSON
+        id: matrix
+        run: |
+          pip install -q yq jq
+          rows=()
+          for dir in ${{ steps.folders.outputs.list }}; do
+            cfg="$dir/deploy.yml"
+            if [[ -f "$cfg" ]]; then
+              svc=$(yq e '.service' "$cfg")
+              cmp=$(yq e '.compose' "$cfg")
+              rows+=("{\"service\":\"$svc\",\"compose\":\"$cmp\"}")
+            fi
+          done
+          json=$(printf '%s\n' "${rows[@]}" | jq -cs '.')
+          echo "json=$json" >> "$GITHUB_OUTPUT"
 
-    # 4. Подключаемся по SSH и перезапускаем изменённые сервисы
-    - name: Deploy via SSH
-      env:
-        SVC_LIST:  ${{ steps.cfg.outputs.services }}
-        CMP_LIST:  ${{ steps.cfg.outputs.composes }}
-        SSH_HOST:  ${{ secrets.server_ip }}
-        SSH_USER:  ${{ secrets.deploy_user }}
-        SSH_KEY:   ${{ secrets.ssh_key }}
-      run: |
-        # --- подготовка SSH ---
-        install -m 600 /dev/null ~/.ssh/id_rsa
-        echo "$SSH_KEY" > ~/.ssh/id_rsa
-        ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+  deploy:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.matrix-json != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.detect-changes.outputs.matrix-json) }}
+    defaults:
+      run:
+        shell: bash
 
-        # --- цикл по сервисам ---
-        idx=1
-        for svc in $SVC_LIST; do
-          cmp=$(echo $CMP_LIST | cut -d' ' -f $idx)
-          echo "▶ $svc  (compose dir: $cmp)"
+    steps:
+      - name: Deploy ${{ matrix.service }}
+        env:
+          SSH_KEY:     ${{ secrets.ssh_key }}
+          SERVER_IP:   ${{ secrets.server_ip }}
+          SSH_USER:    ${{ secrets.deploy_user }}
+          SVC_NAME:    ${{ matrix.service }}
+          COMPOSE_DIR: ${{ matrix.compose }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SERVER_IP" >> ~/.ssh/known_hosts
 
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" bash -s <<'EOSSH'
-set -e
-svc="$1"; cmp="$2"
-cd "$cmp"
-if docker compose config --services | grep -qx "$svc"; then
-  docker compose build "$svc"
-  docker compose up -d  "$svc"
-else
-  echo "Service '$svc' не найден в docker-compose.yml — пропускаем."
-fi
-EOSSH "$svc" "$cmp"
+          echo "🔧 Deploy $SVC_NAME (compose dir: $COMPOSE_DIR)"
 
-          idx=$((idx + 1))
-        done
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SERVER_IP" \
+            bash -s -- "$SVC_NAME" "$COMPOSE_DIR" <<'EOSSH'
+          set -euo pipefail
+          svc="$1"
+          cmp="$2"
+
+          cd "$cmp"
+          if docker compose config --services | grep -qx "$svc"; then
+            echo "▶ building $svc"
+            docker compose build "$svc"
+            echo "▶ restarting $svc"
+            docker compose up -d "$svc"
+          else
+            echo "⚠ $svc not found in compose — skipped"
+          fi
+EOSSH
