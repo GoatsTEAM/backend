@@ -41,8 +41,10 @@ jobs:
         S=() C=()
         for d in ${{ steps.folders.outputs.list }}; do
           [ -f "$d/deploy.yaml" ] || continue
-          S+=("$(yq e '.service'  "$d/deploy.yaml")")
-          C+=("$(yq e '.compose'  "$d/deploy.yaml")")
+          svc=$(yq e '.service' "$d/deploy.yaml")
+          cmp=$(yq e '.compose' "$d/deploy.yaml")
+          S+=("$svc")
+          C+=("$cmp")
         done
         echo "svc=${S[*]}" >>"$GITHUB_OUTPUT"
         echo "cmp=${C[*]}" >>"$GITHUB_OUTPUT"
