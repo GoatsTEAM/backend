@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
-app = FastAPI(root_path="/test", title="Test API")
+app = FastAPI(root_path="/test_2", title="Test API")
 
 Instrumentator().instrument(app).expose(app)
 
