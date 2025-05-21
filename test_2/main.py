@@ -18,3 +18,8 @@ def read_test():
     return {"message": "Hello, Tiny!"}
 
 
+
+@app.get("/dede")
+def read_test():
+    return {"message": "Hello, Tiny!"}
+
