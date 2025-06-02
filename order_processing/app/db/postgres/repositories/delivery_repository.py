@@ -51,6 +51,8 @@ class DeliveryRepository(AbstractDeliveryRepository):
             
             delivery_model.status = delivery.status.value
             delivery_model.tracking_number = delivery.tracking_number
+            delivery_model.method = delivery.method.value
+            delivery_model.address = delivery.address
             delivery_model.updated_at = datetime.now(timezone.utc)
             
             await self.db.commit()

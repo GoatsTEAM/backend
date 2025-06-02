@@ -52,13 +52,12 @@ class PaymentRepository(AbstractPaymentRepository):
             payment_model.status = payment.status.value
             payment_model.transaction_id = payment.transaction_id
             payment_model.updated_at = datetime.now(timezone.utc)
-            
+
             await self.db.commit()
         except SQLAlchemyError as e:
             await self.db.rollback()
             raise RuntimeError(f"Database error: {str(e)}")
         except ValueError as e:
-            await self.db.rollback()
             raise
 
     async def get_payments_by_order(self, order_id: str) -> List[Payment]:

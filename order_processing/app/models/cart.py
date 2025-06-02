@@ -29,10 +29,9 @@ class Cart(BaseModel):
     def add_item(self, item: CartItem) -> "Cart":
         for existing_item in self.items:
             if existing_item.product_id == item.product_id:
-                new_quantity = existing_item.quantity + item.quantity
-                if new_quantity > 100:
-                    raise ValueError("Maximum quantity exceeded (100 items)")
-                existing_item.quantity = new_quantity
+                if existing_item.quantity + item.quantity > 100:
+                    raise ValueError("Maximum quantity exceeded (100 units per product)")
+                existing_item.quantity += item.quantity
                 self.updated_at = datetime.now(timezone.utc)
                 return self
 

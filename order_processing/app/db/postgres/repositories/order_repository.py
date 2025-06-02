@@ -75,6 +75,7 @@ class OrderRepository(AbstractOrderRepository):
             
             for item in order.items:
                 self.db.add(OrderItemModel(
+                    id=str(uuid.uuid4()),
                     order_id=order.id,
                     product_id=item.product_id,
                     quantity=item.quantity,

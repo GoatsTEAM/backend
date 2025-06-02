@@ -9,13 +9,11 @@ class OrderService:
     def __init__(self, 
         order_repo: AbstractOrderRepository,
         cart_service: CartService,
-        actor: Actor
     ):
         self.order_repo = order_repo
         self.cart_service = cart_service
-        self.actor = actor
 
-    async def create_order_from_cart(self) -> Order:
+    async def create_order_from_cart(self, actor: Actor) -> Order:
         try:
             if not self.actor.is_buyer():
                 raise HTTPException(
@@ -23,7 +21,7 @@ class OrderService:
                     detail="Only buyers can create orders"
                 )
 
-            cart = await self.cart_service.get_or_create_active_cart()
+            cart = await self.cart_service.get_or_create_active_cart(actor)
             
             order = Order.create_from_cart(cart)
             
@@ -43,7 +41,7 @@ class OrderService:
                 detail=f"Failed to create order: {str(e)}"
             )
 
-    async def cancel_order(self, order_id: str) -> Order:
+    async def cancel_order(self,actor: Actor, order_id: str) -> Order:
         try:
             order = await self.order_repo.get_order(order_id)
             if not order:
@@ -52,13 +50,12 @@ class OrderService:
                     detail="Order not found"
                 )
             
-            self._validate_ownership(order)
+            self._validate_ownership(order, actor)
             
+            was_paid = order.status == OrderStatus.PAID
             order.cancel()
-            
-            await self.order_repo.update_order_status(order.id, OrderStatus.CANCELLED)
-            
-            if order.status == OrderStatus.PAID:
+            await self.order_repo.update_order(order)
+            if was_paid:
                 await self._initiate_refund(order)
                 
             return order
@@ -73,7 +70,7 @@ class OrderService:
                 detail=f"Failed to cancel order: {str(e)}"
             )
 
-    async def update_order_status(self, order_id: str, new_status: OrderStatus) -> Order:
+    async def update_order_status(self,actor:Actor,  order_id: str, new_status: OrderStatus) -> Order:
         try:
             if not self.actor.is_moderator():
                 raise HTTPException(
@@ -125,7 +122,7 @@ class OrderService:
                 detail=f"Failed to mark order as paid: {str(e)}"
             )
 
-    def _validate_ownership(self, order: Order):
+    def _validate_ownership(self, order: Order, actor: Actor):
         if order.user_id != self.actor.id and not self.actor.is_moderator():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

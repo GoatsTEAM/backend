@@ -1,15 +1,14 @@
 from fastapi import HTTPException, status
-from app.models.delivery import Delivery, DeliveryStatus
+from app.models.delivery import Delivery, DeliveryStatus, DeliveryMethod
 from app.models.actor import Actor
 from app.repositories.abstract_delivery_repository import AbstractDeliveryRepository
 from typing import Optional
 
 class DeliveryService:
-    def __init__(self, repo: AbstractDeliveryRepository, actor: Actor):
+    def __init__(self, repo: AbstractDeliveryRepository):
         self.repo = repo
-        self.actor = actor
 
-    async def create_delivery(self, order_id: str, method: str, address: str) -> Delivery:
+    async def create_delivery(self, actor: Actor,order_id: str, method: str, address: str) -> Delivery:
         try:
             if not self.actor.is_buyer():
                 raise HTTPException(
@@ -18,8 +17,8 @@ class DeliveryService:
                 )
 
             delivery = Delivery(
-                order_id=order_id,
-                method=method,
+                order_id=order_id,  
+                method= DeliveryMethod(method),
                 address=address
             )
             return await self.repo.create_delivery(delivery)

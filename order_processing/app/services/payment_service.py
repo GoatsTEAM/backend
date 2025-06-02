@@ -5,11 +5,10 @@ from app.repositories.abstract_payment_repository import AbstractPaymentReposito
 from typing import Optional
 
 class PaymentService:
-    def __init__(self, repo: AbstractPaymentRepository, actor: Actor):
+    def __init__(self, repo: AbstractPaymentRepository):
         self.repo = repo
-        self.actor = actor
 
-    async def create_payment(self, order_id: str, amount: float, method: PaymentMethod) -> Payment:
+    async def create_payment(self,actor: Actor, order_id: str, amount: float, method: PaymentMethod) -> Payment:
         try:
             if not self.actor.is_buyer():
                 raise HTTPException(
@@ -79,7 +78,7 @@ class PaymentService:
                 detail=f"Failed to mark payment as failed: {str(e)}"
             )
 
-    async def refund_payment(self, payment_id: str, amount: Optional[float] = None) -> Payment:
+    async def refund_payment(self,actor: Actor, payment_id: str, amount: Optional[float] = None) -> Payment:
         try:
             if not self.actor.is_moderator():
                 raise HTTPException(

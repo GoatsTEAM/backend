@@ -40,8 +40,8 @@ class Delivery(BaseModel):
         self.updated_at = datetime.now(timezone.utc)
 
     def mark_as_delivered(self) -> None:
-        if self.status != DeliveryStatus.IN_TRANSIT:
-            raise ValueError("Only in transit deliveries can be marked as delivered")
+        if self.status != DeliveryStatus.SHIPPED:
+            raise ValueError("Only shipped deliveries can be marked as delivered")
         self.status = DeliveryStatus.DELIVERED
         self.updated_at = datetime.now(timezone.utc)
 

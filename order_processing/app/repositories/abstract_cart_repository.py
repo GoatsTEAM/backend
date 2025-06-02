@@ -18,7 +18,3 @@ class AbstractCartRepository(ABC):
     @abstractmethod
     async def get_user_active_cart(self, user_id: str) -> Optional[Cart]:
         pass
-
-    @abstractmethod
-    async def update_cart_status(self, cart_id: str, status: str) -> None:
-        pass

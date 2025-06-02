@@ -5,11 +5,10 @@ from app.repositories.abstract_cart_repository import AbstractCartRepository
 from typing import Optional
 
 class CartService:
-    def __init__(self, repository: AbstractCartRepository, actor: Actor):
+    def __init__(self, repository: AbstractCartRepository):
         self.repo = repository
-        self.actor = actor
 
-    async def get_or_create_active_cart(self) -> Cart:
+    async def get_or_create_active_cart(self, actor: Actor) -> Cart:
         if not self.actor.is_buyer():
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -27,17 +26,18 @@ class CartService:
                 detail=f"Failed to get or create cart: {str(e)}"
             )
 
-    async def add_item(self, item: CartItem) -> Cart:
+    async def add_item(self, item: CartItem, actor: Actor) -> Cart:
         try:
-            cart = await self.get_or_create_active_cart()
-            self._validate_ownership(cart)
+            cart = await self.get_or_create_active_cart(actor)
+            self._validate_ownership(cart, actor)
             
             # Заглушка для интеграции с Product Catalog
             
-            if len(cart.items) >= 100:
+            existing_product_ids = {item.product_id for item in cart.items}
+            if len(existing_product_ids) >= 100 and item.product_id not in existing_product_ids:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Cart cannot contain more than 50 different products"
+                    detail="Cart cannot contain more than 100 different products"
                 )
             
             updated_cart = cart.add_item(item)
@@ -93,7 +93,7 @@ class CartService:
             
             self._validate_ownership(cart)
             cart.mark_as_converted()
-            await self.repo.update_cart_status(cart.id, CartStatus.CONVERTED_TO_ORDER.value)
+            await self.repo.save_cart(cart)
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,7 +105,7 @@ class CartService:
                 detail=f"Failed to convert cart to order: {str(e)}"
             )
 
-    def _validate_ownership(self, cart: Cart):
+    def _validate_ownership(self, cart: Cart, actor: Actor):
         if cart.user_id != self.actor.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

@@ -44,17 +44,12 @@ class Payment(BaseModel):
     @validator('amount')
     def round_amount(cls, v):
         return round(v, 2)
-    
-    @validator('transaction_id')
-    def validate_transaction_id(cls, v: Optional[str], values: dict) -> Optional[str]:
-        if values.get('status') == PaymentStatus.COMPLETED and not v:
-            raise ValueError("Transaction ID required for completed payments")
-        return v
-    
 
     def mark_as_completed(self, transaction_id: str) -> None:
         if self.status != PaymentStatus.PENDING:
             raise ValueError("Only pending payments can be completed")
+        if not transaction_id:
+            raise ValueError("Transaction ID required for completed payments")
         self.status = PaymentStatus.COMPLETED
         self.transaction_id = transaction_id
         self.updated_at = datetime.now(timezone.utc)
@@ -66,16 +61,13 @@ class Payment(BaseModel):
         self.updated_at = datetime.now(timezone.utc)
 
     def refund(self, amount: Optional[float] = None) -> None:
-        if self.status not in {PaymentStatus.COMPLETED, PaymentStatus.PARTIALLY_REFUNDED}:
+        if self.status != PaymentStatus.COMPLETED:
             raise ValueError(
                 f"Cannot refund payment in status {self.status.value}"
             )
-        
+
         if amount:
             if amount > self.amount:
                 raise ValueError("Refund amount exceeds payment amount")
-            self.status = PaymentStatus.PARTIALLY_REFUNDED
-        else:
-            self.status = PaymentStatus.REFUNDED
-        
+        self.status = PaymentStatus.REFUNDED
         self.updated_at = datetime.now(timezone.utc)
