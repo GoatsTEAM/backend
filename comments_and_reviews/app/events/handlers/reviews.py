@@ -1,4 +1,3 @@
-from enum import Enum
 from app.main import event_router
 from app.models.actor import Actor
 from app.models.review import Review
@@ -9,18 +8,25 @@ from app.events.schemas.review import (
     ReadReviews,
     Id,
 )
+from app.events.schemas.event import EventType
 from app.services import ServicesFactory
 from app.dependencies.actor import get_actor
 
 
-class EventType(str, Enum):
-    CREATE_REVIEW = "create_review"
-    UPDATE_REVIEW = "update_review"
-    DELETE_REVIEW = "delete_review"
-    GET_REVIEWS_BY_PRODUCT = "get_reviews_by_product"
-    GET_REVIEWS_BY_USER = "get_reviews_by_user"
-    GET_REVIEW_BY_ID = "get_review_by_id"
-    GET_PRODUCT_STATS = "get_product_stats"
+def get_product_id(new: Review | None, old: Review | None) -> str:
+    if new is not None:
+        return new.get_product()
+    elif old is not None:
+        return old.get_product()
+    else:
+        raise ValueError("New or old review must be provided")
+
+
+def get_rating(review: Review | None) -> int | None:
+    if review is not None:
+        return review.get_rating()
+    else:
+        return None
 
 
 async def update_stats(
@@ -28,12 +34,9 @@ async def update_stats(
     new: Review | None = None,
     old: Review | None = None,
 ):
-    if new is not None:
-        product_id = new.get_product()
-    elif old is not None:
-        product_id = old.get_product()
-    new_rating = new.get_rating() if new is not None else None
-    old_rating = old.get_rating() if old is not None else None
+    product_id = get_product_id(new, old)
+    new_rating = get_rating(new)
+    old_rating = get_rating(old)
     stats = services.get_reviews_statistics_service()
     await stats.update_stats_if_exists(product_id, new_rating, old_rating)
 
