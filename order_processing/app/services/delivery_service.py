@@ -10,7 +10,7 @@ class DeliveryService:
 
     async def create_delivery(self, actor: Actor,order_id: str, method: str, address: str) -> Delivery:
         try:
-            if not self.actor.is_buyer():
+            if not actor.is_buyer():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only buyers can create deliveries"
@@ -28,9 +28,9 @@ class DeliveryService:
                 detail=f"Failed to create delivery: {str(e)}"
             )
 
-    async def update_delivery_status(self, delivery_id: str, new_status: DeliveryStatus) -> Delivery:
+    async def update_delivery_status(self, actor: Actor,delivery_id: str, new_status: DeliveryStatus) -> Delivery:
         try:
-            if not self.actor.is_moderator():
+            if not actor.is_moderator():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This action requires moderator privileges"
@@ -60,9 +60,9 @@ class DeliveryService:
                 detail=f"Failed to update delivery status: {str(e)}"
             )
 
-    async def add_tracking_number(self, delivery_id: str, tracking_number: str) -> Delivery:
+    async def add_tracking_number(self,actor: Actor, delivery_id: str, tracking_number: str) -> Delivery:
         try:
-            if not self.actor.is_moderator():
+            if not actor.is_moderator():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This action requires moderator privileges"
@@ -90,9 +90,9 @@ class DeliveryService:
                 detail=f"Failed to add tracking number: {str(e)}"
             )
 
-    async def mark_as_delivered(self, delivery_id: str) -> Delivery:
+    async def mark_as_delivered(self,actor: Actor,  delivery_id: str) -> Delivery:
         try:
-            if not self.actor.is_moderator():
+            if not actor.is_moderator():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This action requires moderator privileges"
@@ -123,9 +123,9 @@ class DeliveryService:
                 detail=f"Failed to mark delivery as delivered: {str(e)}"
             )
     
-    async def cancel_delivery(self, delivery_id: str) -> Delivery:
+    async def cancel_delivery(self, actor: Actor, delivery_id: str) -> Delivery:
         try:
-            if not self.actor.is_moderator():
+            if not actor.is_moderator():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="This action requires moderator privileges"

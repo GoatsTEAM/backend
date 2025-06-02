@@ -10,7 +10,7 @@ class PaymentService:
 
     async def create_payment(self,actor: Actor, order_id: str, amount: float, method: PaymentMethod) -> Payment:
         try:
-            if not self.actor.is_buyer():
+            if not actor.is_buyer():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Only buyers can create payments"
@@ -80,7 +80,7 @@ class PaymentService:
 
     async def refund_payment(self,actor: Actor, payment_id: str, amount: Optional[float] = None) -> Payment:
         try:
-            if not self.actor.is_moderator():
+            if not actor.is_moderator():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Refunds require moderator privileges"
