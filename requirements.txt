@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+sqlalchemy
+asyncpg
+redis
+confluent-kafka
+pyjwt
+prometheus-client
+python-dotenv
