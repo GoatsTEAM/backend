@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:17
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init_db:/docker-entrypoint-initdb.d
+
+  app:
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - ./app:/app/app_src
+      - ./.env:/app/.env
+    user: 1000:1000
+    environment:
+      PYTHONPATH=:./app:
+      DATABASE_URL: "postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@${DATABASE_HOST}:${DATABASE_PORT}/${DATABASE_NAME}"
+      REST_PORT: ${REST_PORT}
+      GRPC_PORT: ${GRPC_PORT}
+    ports:
+      - "${REST_PORT}:${REST_PORT}"
+      - "${GRPC_PORT}:${GRPC_PORT}"

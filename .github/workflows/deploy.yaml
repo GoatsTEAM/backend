@@ -1,0 +1,85 @@
+name: Deploy changed services
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1 - клонируем репозиторий (полная история нужна для diff)
+      - uses: actions/checkout@v3
+        with: { fetch-depth: 0 }
+
+      # 2 - список верхних папок, где есть изменения
+      - id: detect
+        name: Detect changed folders
+        run: |
+          diff_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
+          echo "diff_files<<EOF" >>"$GITHUB_OUTPUT"
+          echo "$diff_files"     >>"$GITHUB_OUTPUT"
+          echo "EOF"             >>"$GITHUB_OUTPUT"
+
+          folders=$(echo "$diff_files" \
+            | cut -d/ -f1 | sort -u | tr '\n' ' ')
+          echo "folders=$folders" >>"$GITHUB_OUTPUT"
+
+      # 3 - читаем deploy.yaml в этих папках
+      - id: cfg
+        name: Read deploy.yaml configs
+        run: |
+          wget -qO ./yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          chmod +x ./yq
+          S=(); C=()
+          for d in ${{ steps.detect.outputs.folders }}; do
+            [ -f "$d/deploy.yaml" ] || continue
+            S+=("$(./yq e '.service'  "$d/deploy.yaml")")
+            C+=("$(./yq e '.compose' "$d/deploy.yaml")")
+          done
+          echo "services=${S[*]}" >>"$GITHUB_OUTPUT"
+          echo "composes=${C[*]}" >>"$GITHUB_OUTPUT"
+
+      # 4 - отладка: что нашли
+      - name: Debug
+        run: |
+          echo "Services:  ${{ steps.cfg.outputs.services }}"
+          echo "Composes:  ${{ steps.cfg.outputs.composes }}"
+
+      # 5 - SSH-деплой без here-doc
+      - name: Deploy
+        if: steps.cfg.outputs.services != ''
+        env:
+          SSH_KEY:   ${{ secrets.ssh_key }}
+          SSH_HOST:  ${{ secrets.server_ip }}
+          SSH_USER:  ${{ secrets.deploy_user }}
+          SERVICES:  ${{ steps.cfg.outputs.services }}
+          COMPOSES:  ${{ steps.cfg.outputs.composes }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+          IFS=' ' read -ra svcs <<<"$SERVICES"
+          IFS=' ' read -ra cmps <<<"$COMPOSES"
+
+          for i in "${!svcs[@]}"; do
+            svc=${svcs[$i]}
+            dir=${cmps[$i]}
+            echo "🚀 Deploying '$svc' (compose dir: $dir)"
+
+            ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+              cd '$dir'
+              git pull --ff-only origin main
+              if docker compose config --services | grep -qx '$svc'; then
+                echo '• building $svc'
+                docker compose build '$svc'
+                echo '• restarting $svc'
+                docker compose up -d '$svc'
+              else
+                echo '⚠ $svc not found in compose — skipped'
+              fi
+            "
+          done

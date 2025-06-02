@@ -60,4 +60,5 @@ compose: /home/deploy/backend
 ---
 ### And one more thing, the service is deployed only when it finds changes with the previous commit, so if you have nothing to add, then delete or add an empty line
 ---
+
 ### If you have some problems, just ask Pavel
