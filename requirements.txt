@@ -5,4 +5,6 @@ sqlalchemy
 asyncpg
 redis
 confluent-kafka
+pyjwt
+prometheus-client
 python-dotenv
