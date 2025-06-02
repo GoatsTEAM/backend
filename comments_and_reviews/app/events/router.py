@@ -7,7 +7,7 @@ from app.services import ServicesFactory
 
 
 class Router:
-    def __init__(self, services: ServicesFactory):
+    def __init__(self, services: ServicesFactory | None = None):
         self.handlers: dict[str, EventHandler] = {}
         self.services = services
 
@@ -29,10 +29,14 @@ class Router:
 
     async def route(self, event: Event) -> Event:
         handler = self.handlers.get(event.event_type)
+        if self.services is None:
+            raise ValueError("Services are required for routing events")
+
         if not handler:
-            event.body = {
-                "error": f"No handler for event type {event.event_type}"
-            }
+            event.body = {"error": f"No handler for event type {event.event_type}"}
             return event
 
         return await handler(event, self.services)
+
+    def include(self, router: "Router"):
+        self.handlers.update(router.handlers)
