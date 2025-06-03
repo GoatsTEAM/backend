@@ -7,15 +7,15 @@ from app.api.v1.cart import router as cart_router
 from app.api.v1.order import router as order_router
 from app.api.v1.delivery import router as delivery_router
 from app.api.v1.metrics import router as metrics_router
-
+from app.db import init_postgres
 from app.dependencies.service_factory import get_services_factory
 from app.events.consume_events import consume_events
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_postgres()
     services = get_services_factory()
-    
     asyncio.create_task(consume_events(services))
     
     yield
