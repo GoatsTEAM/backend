@@ -1,28 +1,29 @@
 from sqlalchemy.orm import Session
-from . import models, schemas
+from app.models.product import Product, Category, ProductAttribute
+from app.models.schemas.product import ProductCreate, ProductUpdate, CategoryCreate
 from typing import List, Optional
 
-def get_category(db: Session, category_id: int) -> Optional[models.Category]:
-    return db.query(models.Category).filter(models.Category.id == category_id).first()
+def get_category(db: Session, category_id: int) -> Optional[Category]:
+    return db.query(Category).filter(Category.id == category_id).first()
 
-def get_categories(db: Session, skip: int = 0, limit: int = 100) -> List[models.Category]:
-    return db.query(models.Category).offset(skip).limit(limit).all()
+def get_categories(db: Session, skip: int = 0, limit: int = 100) -> List[Category]:
+    return db.query(Category).offset(skip).limit(limit).all()
 
-def create_category(db: Session, category: schemas.CategoryCreate) -> models.Category:
-    db_category = models.Category(**category.dict())
+def create_category(db: Session, category: CategoryCreate) -> Category:
+    db_category = Category(**category.dict())
     db.add(db_category)
     db.commit()
     db.refresh(db_category)
     return db_category
 
-def get_product(db: Session, product_id: int) -> Optional[models.Product]:
-    return db.query(models.Product).filter(models.Product.id == product_id).first()
+def get_product(db: Session, product_id: int) -> Optional[Product]:
+    return db.query(Product).filter(Product.id == product_id).first()
 
-def get_products(db: Session, skip: int = 0, limit: int = 100) -> List[models.Product]:
-    return db.query(models.Product).offset(skip).limit(limit).all()
+def get_products(db: Session, skip: int = 0, limit: int = 100) -> List[Product]:
+    return db.query(Product).offset(skip).limit(limit).all()
 
-def create_product(db: Session, product: schemas.ProductCreate) -> models.Product:
-    db_product = models.Product(
+def create_product(db: Session, product: ProductCreate) -> Product:
+    db_product = Product(
         name=product.name,
         description=product.description,
         price=product.price,
@@ -32,10 +33,9 @@ def create_product(db: Session, product: schemas.ProductCreate) -> models.Produc
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
-    # Add attributes if any
     if product.attributes:
         for attr in product.attributes:
-            db_attr = models.ProductAttribute(
+            db_attr = ProductAttribute(
                 name=attr.name,
                 value=attr.value,
                 product_id=db_product.id
@@ -45,21 +45,20 @@ def create_product(db: Session, product: schemas.ProductCreate) -> models.Produc
     db.refresh(db_product)
     return db_product
 
-def update_product(db: Session, product_id: int, product: schemas.ProductUpdate) -> Optional[models.Product]:
+def update_product(db: Session, product_id: int, product: ProductUpdate) -> Optional[Product]:
     db_product = get_product(db, product_id)
     if db_product is None:
         return None
     for key, value in product.dict(exclude_unset=True).items():
         if key == "attributes":
-            continue  # handle attributes separately
+            continue
         setattr(db_product, key, value)
     db.commit()
     db.refresh(db_product)
-    # Update attributes if provided
     if product.attributes is not None:
-        db.query(models.ProductAttribute).filter(models.ProductAttribute.product_id == db_product.id).delete()
+        db.query(ProductAttribute).filter(ProductAttribute.product_id == db_product.id).delete()
         for attr in product.attributes:
-            db_attr = models.ProductAttribute(
+            db_attr = ProductAttribute(
                 name=attr.name,
                 value=attr.value,
                 product_id=db_product.id

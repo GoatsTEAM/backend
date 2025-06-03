@@ -1,8 +1,10 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
+from .media import MediaInDB
 
 class CategoryBase(BaseModel):
     name: str
+    parent_category_id: Optional[int] = None
 
 class CategoryCreate(CategoryBase):
     pass
@@ -12,25 +14,14 @@ class CategoryInDB(CategoryBase):
     class Config:
         orm_mode = True
 
-class ProductAttributeBase(BaseModel):
-    name: str
-    value: str
-
-class ProductAttributeCreate(ProductAttributeBase):
-    pass
-
-class ProductAttributeInDB(ProductAttributeBase):
-    id: int
-    class Config:
-        orm_mode = True
-
 class ProductBase(BaseModel):
-    name: str
+    title: str
     description: Optional[str] = None
     price: float
-    quantity: int
-    category_id: Optional[int] = None
-    attributes: Optional[List[ProductAttributeCreate]] = None
+    stock_quantity: int
+    category_id: int
+    seller_id: str
+    media: Optional[List[MediaInDB]] = None
 
 class ProductCreate(ProductBase):
     pass
